@@ -18,8 +18,8 @@ from style import ZOOM_PIVOT_CURSOR, StyleConfig
 CONTROLS_TEXT = (
     "Right / Space / Enter: advance by increment   |   type digits + Enter: set increment & advance   |   "
     "Backspace: edit typed count   |   Left: undo by increment   |   "
-    "Up / Down / Scroll: zoom   |   Shift+Up / Shift+Down: base zoom factor   |   "
-    "Shift+Left / Shift+Right: zoom damping   |   Colors / C: arc colors   |   Q / Esc: quit"
+    "Up / Down / Scroll: zoom   |   Shift+Up / Shift+Down: zoom speed   |   "
+    "Colors / C: arc colors   |   Q / Esc: quit"
 )
 
 
@@ -68,12 +68,8 @@ class ArcRenderer:
         pos = self.simulation.current_position
         step = self.simulation.current_step
         typed = f"  |  typed: {self.input_buffer}" if self.input_buffer else ""
-        speed_pct = (self._zoom_speed_factor() - 1) * 100
-        base_pct = (self.style.zoom_factor - 1) * 100
-        zoom = (
-            f"  |  zoom speed: {speed_pct:+.1f}%/press"
-            f" (base {base_pct:+.1f}%/press, damping={self.style.zoom_damping:.2f}, scale={self.zoom_scale:.3g})"
-        )
+        speed_pct = (self.style.zoom_factor - 1) * 100
+        zoom = f"  |  zoom speed: {speed_pct:+.1f}%/press (scale={self.zoom_scale:.3g})"
         return f"Step {step}   Position {pos}   |  increment: {self.step_increment}{typed}{zoom}"
 
     def default_limits(self) -> tuple[tuple[float, float], tuple[float, float]]:
@@ -107,27 +103,12 @@ class ArcRenderer:
         self.ax.set_ylim(cy - half_h, cy + half_h)
         self.ax.set_aspect("equal", adjustable="box")
 
-    def _zoom_speed_factor(self) -> float:
-        """The per-step zoom speed (as a multiplicative factor) for the *current* zoom_scale.
-
-        zoom_scale == 1 is the default auto-fit view, so speed == zoom_factor
-        there. As zoom_scale grows (further from the default view), the speed
-        smoothly decays toward 1 (i.e. toward 0%/press) - continuous in
-        log-scale, no thresholds/tiers. Right at/inside the default view
-        (zoom_scale <= 1), speed stays at the base rate.
-        """
-        damping = self.style.zoom_damping
-        if damping <= 0 or self.zoom_scale <= 1:
-            return self.style.zoom_factor
-        log_out = math.log2(self.zoom_scale)
-        return 1 + (self.style.zoom_factor - 1) / (1 + damping * log_out)
-
     def _refresh_title(self) -> None:
         self.ax.set_title(self.status_line(), fontsize=self.style.status_fontsize)
 
     def zoom_at(self, direction: str, cursor_x: float | None, cursor_y: float | None) -> None:
         """Zoom in ('up') or out ('down'). Pivot from StyleConfig.zoom_pivot."""
-        factor = self._zoom_speed_factor()
+        factor = self.style.zoom_factor
         if direction == "up":
             self.zoom_scale /= factor
         else:
@@ -160,11 +141,6 @@ class ArcRenderer:
 
     def adjust_zoom_factor(self, delta: float) -> None:
         self.style.zoom_factor = max(1.001, self.style.zoom_factor + delta)
-        self._refresh_title()
-        self.fig.canvas.draw_idle()
-
-    def adjust_zoom_damping(self, delta: float) -> None:
-        self.style.zoom_damping = max(0.0, self.style.zoom_damping + delta)
         self._refresh_title()
         self.fig.canvas.draw_idle()
 

@@ -81,8 +81,7 @@ Click the plot window to give it focus, then:
 | `Left` | Undo by the remembered increment |
 | `Up` / `Down` | Zoom in / out (pivot: origin by default; change `StyleConfig.zoom_pivot` in code) |
 | Mouse wheel | Same zoom as `Up` / `Down` |
-| `Shift+Down` / `Shift+Up` | Decrease / increase the base zoom factor, live |
-| `Shift+Left` / `Shift+Right` | Decrease / increase zoom damping, live |
+| `Shift+Down` / `Shift+Up` | Decrease / increase zoom speed, live |
 | `C` or the **Colors** button | Choose above-arc and below-arc colors |
 | `Q` / `Escape` | Quit |
 
@@ -95,30 +94,10 @@ until you type a new number.
 ### Zoom sensitivity
 
 `zoom speed` is how much the view size changes per `Up`/`Down`/scroll press,
-shown in the title as a percentage (default `+5.0%/press`). `zoom_damping`
-makes that percentage shrink the further the view gets from the default
-auto-fit - so holding `Down` doesn't keep flying outward at a constant 5%
-forever. With the default `zoom_damping=0.6`:
-
-| View size vs. default | Speed shown |
-| --- | --- |
-| At the default view (`scale=1`) | `+5.0%/press` |
-| 8x zoomed out (`scale=8`) | `+1.8%/press` |
-| 64x zoomed out (`scale=64`) | `+1.1%/press` |
-
-So the further out you go, the more each press feels like a smaller nudge
-instead of a big jump - that's the whole effect. It depends only on
-*distance* from the default view, not on which direction you're pressing, so
-zooming in from a far-out view is exactly as slow as continuing to zoom out
-from there (no separate "in" vs "out" behavior).
-
-Use `Shift+Up`/`Shift+Down` to tune the base speed and
-`Shift+Left`/`Shift+Right` to tune the damping while watching the title,
-then tell me what felt right and I'll set it as the default in `style.py`:
-
-- `zoom_factor` - the base speed right at the default view.
-- `zoom_damping` - how fast that speed drops off as you zoom out (`0`
-  disables damping - constant speed everywhere).
+shown in the title as a percentage (default `+5.0%/press`, from
+`StyleConfig.zoom_factor = 1.05`). Tune it live with `Shift+Up`/`Shift+Down`
+and watch the title, then tell me what felt right and I'll set it as the
+default in `style.py`.
 
 ### Matplotlib toolbar
 
