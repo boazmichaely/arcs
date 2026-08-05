@@ -12,11 +12,15 @@ Usage:
 
 Controls (once the plot window has focus):
     Right / Space / Enter (no digits typed)  -> advance by the remembered increment (starts at 1)
-    0-9                                        -> build up a step count to jump by
+    digits (any length)                        -> build up a step count (e.g. 25)
     Enter (with digits typed)                  -> advance that many steps, and remember it as
                                                    the increment for future advance/undo
     Backspace                                  -> remove the last typed digit
     Left                                       -> undo by the remembered increment
+    Up / Down arrow keys                       -> zoom in / out (same as mouse wheel;
+                                                   pivot is code-configurable, default: origin)
+    Mouse wheel                                -> zoom in / out
+    C  (or the Colors button on the figure)    -> choose above/below arc colors
     Q / Escape                                 -> quit
 """
 
@@ -28,6 +32,7 @@ import matplotlib.pyplot as plt
 from renderer import ArcRenderer
 from rules import DEFAULT_RULE
 from simulation import Simulation
+from style import StyleConfig
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
@@ -39,17 +44,41 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         default=None,
         help="Optional number of steps to run immediately before showing the window.",
     )
+    parser.add_argument(
+        "--max-label-step",
+        type=int,
+        default=None,
+        help="Hide arc-size labels once current step exceeds this (default: 10).",
+    )
+    parser.add_argument(
+        "--above-color",
+        default=None,
+        help="Initial color for arcs above the line (default: black).",
+    )
+    parser.add_argument(
+        "--below-color",
+        default=None,
+        help="Initial color for arcs below the line (default: black).",
+    )
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> None:
     args = parse_args(sys.argv[1:] if argv is None else argv)
 
+    style = StyleConfig()
+    if args.max_label_step is not None:
+        style.max_step_to_render_arc_size = args.max_label_step
+    if args.above_color:
+        style.above_color = args.above_color
+    if args.below_color:
+        style.below_color = args.below_color
+
     sim = Simulation(rule=DEFAULT_RULE)
     if args.n:
         sim.advance(args.n)
 
-    renderer = ArcRenderer(sim)
+    renderer = ArcRenderer(sim, style=style)
 
     def on_key(event) -> None:
         key = event.key
@@ -58,14 +87,26 @@ def main(argv: list[str] | None = None) -> None:
             plt.close(renderer.fig)
             return
 
+        if key in ("c", "C"):
+            renderer.open_color_settings()
+            return
+
+        if key == "up":
+            renderer.zoom_at("up", None, None)
+            return
+
+        if key == "down":
+            renderer.zoom_at("down", None, None)
+            return
+
         if key and key.isdigit():
             renderer.input_buffer += key
-            renderer.redraw()
+            renderer.redraw(preserve_zoom=True)
             return
 
         if key == "backspace":
             renderer.input_buffer = renderer.input_buffer[:-1]
-            renderer.redraw()
+            renderer.redraw(preserve_zoom=True)
             return
 
         if key in ("enter", "return"):
@@ -88,7 +129,14 @@ def main(argv: list[str] | None = None) -> None:
             renderer.redraw()
             return
 
+    def on_scroll(event) -> None:
+        if event.inaxes != renderer.ax:
+            return
+        direction = "up" if event.button == "up" else "down"
+        renderer.zoom_at(direction, event.xdata, event.ydata)
+
     renderer.fig.canvas.mpl_connect("key_press_event", on_key)
+    renderer.fig.canvas.mpl_connect("scroll_event", on_scroll)
     renderer.redraw()
     plt.show()
 

@@ -3,6 +3,11 @@
 from dataclasses import dataclass
 
 
+# Zoom pivot modes (code-configurable; not yet exposed in the settings UI).
+ZOOM_PIVOT_ORIGIN = "origin"
+ZOOM_PIVOT_CURSOR = "cursor"
+
+
 @dataclass
 class StyleConfig:
     # Both default to the same color; change independently to tell above/below apart.
@@ -18,3 +23,16 @@ class StyleConfig:
     status_fontsize: float = 10.0
 
     padding_fraction: float = 0.12  # extra breathing room around the computed bounds
+
+    # Arc size labels are shown only while current_step <= this value.
+    # Undo back under the limit and labels reappear. Set very high to always label.
+    max_step_to_render_arc_size: int = 10
+
+    # Mouse-wheel / Up-Down zoom. Pivot is code-configurable only for now.
+    zoom_pivot: str = ZOOM_PIVOT_ORIGIN  # or ZOOM_PIVOT_CURSOR
+    zoom_factor: float = 1.2  # scale change per notch/keypress (>1)
+    # Practically unlimited zoom range (only guards against float overflow/underflow),
+    # so deep zoom at large step counts keeps working - that's when it looks best,
+    # since it reads as a smoothly receding/advancing spiral.
+    zoom_scale_min: float = 1e-9
+    zoom_scale_max: float = 1e9

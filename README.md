@@ -12,6 +12,25 @@ view, the line grows by 5 on each side (10 total), and the view zooms out so
 the whole line and every arc drawn so far stay visible. Arcs are true circles
 (the plot uses a 1:1 aspect ratio), and the window is freely resizable.
 
+Arc-size labels show the signed step (`n` above, `-n` below). Labels are hidden
+once the current step exceeds `max_step_to_render_arc_size` (default **10**);
+undo back under that limit and they reappear.
+
+## Credit
+
+This project's rendering style (alternating semicircular arcs above/below a
+number line) is inspired by the classic visualization of
+[Recamán's sequence](https://en.wikipedia.org/wiki/Recam%C3%A1n%27s_sequence)
+(OEIS [A005132](https://oeis.org/A005132)), invented by Colombian mathematician
+Bernardo Recamán Santos. The arc-drawing method is credited to mathematician
+Edmund Harriss, and it was popularized by Numberphile's 2018 video
+["The Slightly Spooky Recamán Sequence"](https://www.youtube.com/watch?v=FGC5TdIiT9U).
+
+The rule implemented here (alternate right/left by a fixed odd/even parity, no
+"avoid negatives or repeats" fallback) is a simpler relative of Recamán's
+actual rule - see the [Design](#design) section below for how to swap in a
+true Recamán `StepRule` later.
+
 ## Install
 
 ```bash
@@ -25,6 +44,8 @@ pip install -r requirements.txt
 ```bash
 python arcs.py            # start interactive, at step 0
 python arcs.py 25         # pre-run 25 steps, show the result, then stay interactive
+python arcs.py --max-label-step 20
+python arcs.py --above-color blue --below-color red
 ```
 
 ## Controls
@@ -34,10 +55,13 @@ Click the plot window to give it focus, then:
 | Key(s) | Action |
 | --- | --- |
 | `Right` / `Space` / `Enter` (no digits typed) | Advance by the remembered increment (starts at 1) |
-| `0`-`9` | Build up a step count to jump by |
+| Digit keys (`0`-`9`, any length) | Build a multi-digit step count (e.g. type `2` then `5` for 25) |
 | `Enter` (with digits typed) | Advance that many steps, and remember that count as the increment |
 | `Backspace` | Remove the last typed digit |
 | `Left` | Undo by the remembered increment |
+| `Up` / `Down` | Zoom in / out (pivot: origin by default; change `StyleConfig.zoom_pivot` in code) |
+| Mouse wheel | Same zoom as `Up` / `Down` |
+| `C` or the **Colors** button | Choose above-arc and below-arc colors |
 | `Q` / `Escape` | Quit |
 
 The remembered increment is shown in the plot title. Typing a number and
@@ -45,6 +69,27 @@ confirming it with `Enter` updates that increment for both future advances
 *and* undos, so e.g. typing `5` + `Enter` moves forward 5 steps, and every
 subsequent bare `Enter`/`Right`/`Space` moves 5 more, or `Left` undoes 5,
 until you type a new number.
+
+### Matplotlib toolbar
+
+These buttons affect the **view**, not the step simulation:
+
+| Button | What it does |
+| --- | --- |
+| Home | Reset zoom/pan to the last auto-fit view |
+| Back / Forward | Undo / redo zoom-pan history |
+| Pan (cross arrows) | Click-drag to pan |
+| Zoom (magnifier) | Drag a rectangle to zoom |
+| Configure subplots | `wspace` / `hspace` - spacing between panes in a **multi-plot** grid. This app has one axes, so changing them has no effect. |
+| Save | Save the figure; suggested name is `Number_Line_Arcs-<n>.png` where `n` is the last rendered step |
+
+On the default **macosx** backend, that toolbar is native and fixed by matplotlib - you cannot add custom icons to it without switching to a Qt or Tk backend (which also need those libraries installed). Arc colors therefore live on the figure as a **Colors** button (and the `C` key), not on the toolbar.
+
+Step advance / undo is only via the keyboard controls above.
+
+### Colors
+
+Press `C` or click **Colors**. On macOS this opens the system color picker (no tkinter required). If that is unavailable, a small swatch window is used instead.
 
 ## Design
 
@@ -61,8 +106,9 @@ The movement rule is intentionally decoupled from everything else:
   markers. It derives "arc above" vs. "arc below" from the actual direction
   of movement (moved right -> above, moved left -> below), not from the
   parity of `n`, so it never needs to change when the rule changes.
-- `style.py` - `StyleConfig` centralizes colors and sizing (arc colors default
-  to the same value, but are independently configurable).
+- `style.py` - `StyleConfig` centralizes colors, label cutoff, and zoom
+  pivot (`ZOOM_PIVOT_ORIGIN` by default; set to `ZOOM_PIVOT_CURSOR` in code
+  to zoom toward the mouse).
 
 To try a different rule (e.g. a Recaman-sequence-style "try left, fall back to
 right, no repeats" policy), add a new `StepRule` subclass in `rules.py` and
