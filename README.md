@@ -94,25 +94,31 @@ until you type a new number.
 
 ### Zoom sensitivity
 
-The per-step zoom factor (`StyleConfig.zoom_factor`, default `1.08`) shrinks
-smoothly and continuously the further the view is from the default auto-fit -
-each step changes it *less* the farther out (or, from a far view, back in)
-you are, so a held key doesn't blow past content. It depends only on
-*distance* from the default view, not on which direction you're currently
-pressing, so zoom-in and zoom-out share the same speed curve at a given zoom
-level (there's no separate "in" vs "out" damping).
+`zoom speed` is how much the view size changes per `Up`/`Down`/scroll press,
+shown in the title as a percentage (default `+5.0%/press`). `zoom_damping`
+makes that percentage shrink the further the view gets from the default
+auto-fit - so holding `Down` doesn't keep flying outward at a constant 5%
+forever. With the default `zoom_damping=0.6`:
 
-The plot title always shows the live `zoom` info (`scale`, `step_factor`,
-`base`, `damping`) alongside the step/position line. Use
-`Shift+Up`/`Shift+Down` to tune the base factor and `Shift+Left`/`Shift+Right`
-to tune the damping while watching the title and the zoom feel change, then
-bake whatever you land on into `StyleConfig` in `style.py` (or just tell me
-the values and I'll set them as the defaults):
+| View size vs. default | Speed shown |
+| --- | --- |
+| At the default view (`scale=1`) | `+5.0%/press` |
+| 8x zoomed out (`scale=8`) | `+1.8%/press` |
+| 64x zoomed out (`scale=64`) | `+1.1%/press` |
 
-- `zoom_factor` - the base per-step factor right at the default view.
-- `zoom_damping` - how strongly the factor shrinks as the view gets further
-  from the default (`0` disables damping and uses a constant `zoom_factor`
-  everywhere).
+So the further out you go, the more each press feels like a smaller nudge
+instead of a big jump - that's the whole effect. It depends only on
+*distance* from the default view, not on which direction you're pressing, so
+zooming in from a far-out view is exactly as slow as continuing to zoom out
+from there (no separate "in" vs "out" behavior).
+
+Use `Shift+Up`/`Shift+Down` to tune the base speed and
+`Shift+Left`/`Shift+Right` to tune the damping while watching the title,
+then tell me what felt right and I'll set it as the default in `style.py`:
+
+- `zoom_factor` - the base speed right at the default view.
+- `zoom_damping` - how fast that speed drops off as you zoom out (`0`
+  disables damping - constant speed everywhere).
 
 ### Matplotlib toolbar
 

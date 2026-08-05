@@ -68,9 +68,11 @@ class ArcRenderer:
         pos = self.simulation.current_position
         step = self.simulation.current_step
         typed = f"  |  typed: {self.input_buffer}" if self.input_buffer else ""
+        speed_pct = (self._zoom_speed_factor() - 1) * 100
+        base_pct = (self.style.zoom_factor - 1) * 100
         zoom = (
-            f"  |  zoom: scale={self.zoom_scale:.3g}, step_factor={self._effective_zoom_factor():.4f}"
-            f" (base={self.style.zoom_factor:.3f}, damping={self.style.zoom_damping:.2f})"
+            f"  |  zoom speed: {speed_pct:+.1f}%/press"
+            f" (base {base_pct:+.1f}%/press, damping={self.style.zoom_damping:.2f}, scale={self.zoom_scale:.3g})"
         )
         return f"Step {step}   Position {pos}   |  increment: {self.step_increment}{typed}{zoom}"
 
@@ -105,13 +107,14 @@ class ArcRenderer:
         self.ax.set_ylim(cy - half_h, cy + half_h)
         self.ax.set_aspect("equal", adjustable="box")
 
-    def _effective_zoom_factor(self) -> float:
-        """The per-step zoom factor for the *current* zoom_scale.
+    def _zoom_speed_factor(self) -> float:
+        """The per-step zoom speed (as a multiplicative factor) for the *current* zoom_scale.
 
-        zoom_scale == 1 is the default auto-fit view, so factor == zoom_factor
-        there. As zoom_scale grows (further zoomed out), the effective factor
-        smoothly decays toward 1 (slower steps) - continuous in log-scale, no
-        thresholds/tiers. Zooming in (zoom_scale < 1) is left at the base rate.
+        zoom_scale == 1 is the default auto-fit view, so speed == zoom_factor
+        there. As zoom_scale grows (further from the default view), the speed
+        smoothly decays toward 1 (i.e. toward 0%/press) - continuous in
+        log-scale, no thresholds/tiers. Right at/inside the default view
+        (zoom_scale <= 1), speed stays at the base rate.
         """
         damping = self.style.zoom_damping
         if damping <= 0 or self.zoom_scale <= 1:
@@ -124,7 +127,7 @@ class ArcRenderer:
 
     def zoom_at(self, direction: str, cursor_x: float | None, cursor_y: float | None) -> None:
         """Zoom in ('up') or out ('down'). Pivot from StyleConfig.zoom_pivot."""
-        factor = self._effective_zoom_factor()
+        factor = self._zoom_speed_factor()
         if direction == "up":
             self.zoom_scale /= factor
         else:
