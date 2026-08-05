@@ -33,7 +33,7 @@ true Recamán `StepRule` later.
 
 ## Install
 
-macOS / Linux (bash/zsh):
+macOS / Linux:
 
 ```bash
 python3 -m venv .venv
@@ -41,54 +41,21 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Windows: `source` is a bash-ism and doesn't exist in `cmd.exe` or PowerShell.
-Use one of these instead (`py` is the Python Launcher installed by
-python.org - see the note below on `py` vs `python3`):
+Windows (cmd.exe):
 
 ```bat
-:: cmd.exe
 py -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
+Windows (PowerShell):
+
 ```powershell
-# PowerShell
 py -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
-
-In `cmd.exe`, `.venv\Scripts\activate` (no extension needed) works because
-cmd automatically resolves it to `activate.bat` and runs it in your current
-session. In **PowerShell**, you need the explicit `.venv\Scripts\Activate.ps1`
-- PowerShell doesn't reliably auto-resolve `.bat`/`.ps1` the way cmd does, and
-even if it ran `activate.bat` there, that spawns a separate cmd.exe process
-whose environment changes wouldn't carry back into your PowerShell session.
-If PowerShell blocks `Activate.ps1` with an execution-policy error, run
-`Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned` first, then
-retry. (If you're using **Git Bash** on Windows instead, the macOS/Linux
-command above works as-is, just with `.venv/Scripts/activate` as the path.)
-
-The Windows python.org installer bundles tkinter, so the color picker (see
-[Colors](#colors)) uses the standard tkinter dialog there, rather than the
-macOS-specific fallback this was built against.
-
-### `py` vs `python3`
-
-- **`py`** is the *Python Launcher for Windows*, installed alongside Python by
-  the official python.org installer. It's the most reliable way to invoke
-  Python on Windows: it finds your real install regardless of `PATH` order,
-  and lets you target a specific version (`py -3.11`). Use it for the `-m venv`
-  step above.
-- **`python3`** is a macOS/Linux convention (used there because plain `python`
-  might not exist, or might be legacy Python 2). Windows installs don't
-  provide a `python3` command.
-- Plain **`python`** also works on Windows once a venv is activated (it's on
-  `PATH` inside the venv), and often works outside a venv too if you checked
-  "Add python.exe to PATH" during install - though on some systems `python`
-  can be shadowed by a Microsoft Store alias stub that opens the Store instead
-  of running Python, which `py` avoids entirely.
 
 ## Run
 
