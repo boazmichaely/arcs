@@ -33,11 +33,35 @@ true Recamán `StepRule` later.
 
 ## Install
 
+macOS / Linux (bash/zsh):
+
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
+
+Windows: `source` is a bash-ism and doesn't exist in `cmd.exe`. Use one of these instead:
+
+```bat
+:: cmd.exe
+py -m venv .venv
+.venv\Scripts\activate.bat
+pip install -r requirements.txt
+```
+
+```powershell
+# PowerShell
+py -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+(If PowerShell blocks the activation script with a execution-policy error, run
+`Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned` first, then
+retry.) The Windows python.org installer bundles tkinter, so the color picker
+(see [Colors](#colors)) uses the standard tkinter dialog there, rather than
+the macOS-specific fallback this was built against.
 
 ## Run
 
@@ -47,6 +71,8 @@ python arcs.py 25         # pre-run 25 steps, show the result, then stay interac
 python arcs.py --max-label-step 20
 python arcs.py --above-color blue --below-color red
 ```
+
+(On Windows use `python` the same way, once the venv above is activated.)
 
 ## Controls
 
@@ -61,6 +87,8 @@ Click the plot window to give it focus, then:
 | `Left` | Undo by the remembered increment |
 | `Up` / `Down` | Zoom in / out (pivot: origin by default; change `StyleConfig.zoom_pivot` in code) |
 | Mouse wheel | Same zoom as `Up` / `Down` |
+| `[` / `]` | Decrease / increase the base zoom factor, live |
+| `-` / `=` | Decrease / increase zoom-out damping, live |
 | `C` or the **Colors** button | Choose above-arc and below-arc colors |
 | `Q` / `Escape` | Quit |
 
@@ -69,6 +97,24 @@ confirming it with `Enter` updates that increment for both future advances
 *and* undos, so e.g. typing `5` + `Enter` moves forward 5 steps, and every
 subsequent bare `Enter`/`Right`/`Space` moves 5 more, or `Left` undoes 5,
 until you type a new number.
+
+### Zoom sensitivity
+
+The per-step zoom factor (`StyleConfig.zoom_factor`, default `1.08`) shrinks
+smoothly and continuously as you zoom further out - each step changes it
+*less* the farther the view is from the default auto-fit, so a held key
+doesn't blow past content once you're already zoomed way out.
+
+A blue debug line under the plot always shows the live `zoom_scale`,
+`effective_factor`, base `zoom_factor`, and `zoom_out_damping`. Press
+`[` / `]` to tune the base factor and `-` / `=` to tune the damping while
+watching the numbers and the zoom feel change, then bake whatever you land on
+into `StyleConfig` in `style.py` (or just tell me the values and I'll set
+them as the defaults):
+
+- `zoom_factor` - the base per-step factor right at the default view.
+- `zoom_out_damping` - how strongly zoomed-out steps slow down (`0` disables
+  damping and uses a constant `zoom_factor` everywhere).
 
 ### Matplotlib toolbar
 

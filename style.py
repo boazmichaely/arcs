@@ -30,7 +30,18 @@ class StyleConfig:
 
     # Mouse-wheel / Up-Down zoom. Pivot is code-configurable only for now.
     zoom_pivot: str = ZOOM_PIVOT_ORIGIN  # or ZOOM_PIVOT_CURSOR
-    zoom_factor: float = 1.2  # scale change per notch/keypress (>1)
+
+    # Base per-step zoom factor (>1) used right at the default/auto-fit view.
+    zoom_factor: float = 1.08
+
+    # Zoom-out sensitivity damping: the *effective* per-step factor shrinks
+    # smoothly (continuously, not in tiers) as the view gets further from the
+    # default auto-fit view, so a held key/scroll doesn't blow past content
+    # once you're already zoomed way out. 0 disables damping (constant
+    # zoom_factor everywhere); higher values slow zoomed-out steps down more.
+    # See ArcRenderer._effective_zoom_factor for the formula.
+    zoom_out_damping: float = 0.6
+
     # Practically unlimited zoom range (only guards against float overflow/underflow),
     # so deep zoom at large step counts keeps working - that's when it looks best,
     # since it reads as a smoothly receding/advancing spiral.

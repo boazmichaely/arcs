@@ -20,8 +20,13 @@ Controls (once the plot window has focus):
     Up / Down arrow keys                       -> zoom in / out (same as mouse wheel;
                                                    pivot is code-configurable, default: origin)
     Mouse wheel                                -> zoom in / out
+    [ / ]                                       -> decrease / increase the base zoom factor
+    - / =                                       -> decrease / increase zoom-out damping
     C  (or the Colors button on the figure)    -> choose above/below arc colors
     Q / Escape                                 -> quit
+
+A debug line under the plot always shows the live zoom_scale, effective
+per-step factor, base zoom_factor, and zoom_out_damping while you tune them.
 """
 
 import argparse
@@ -97,6 +102,22 @@ def main(argv: list[str] | None = None) -> None:
 
         if key == "down":
             renderer.zoom_at("down", None, None)
+            return
+
+        if key == "[":
+            renderer.adjust_zoom_factor(-0.01)
+            return
+
+        if key == "]":
+            renderer.adjust_zoom_factor(0.01)
+            return
+
+        if key == "-":
+            renderer.adjust_zoom_out_damping(-0.1)
+            return
+
+        if key == "=":
+            renderer.adjust_zoom_out_damping(0.1)
             return
 
         if key and key.isdigit():

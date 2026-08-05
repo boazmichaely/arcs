@@ -18,7 +18,8 @@ from style import ZOOM_PIVOT_CURSOR, StyleConfig
 CONTROLS_TEXT = (
     "Right / Space / Enter: advance by increment   |   type digits + Enter: set increment & advance   |   "
     "Backspace: edit typed count   |   Left: undo by increment   |   "
-    "Up / Down / Scroll: zoom   |   Colors / C: arc colors   |   Q / Esc: quit"
+    "Up / Down / Scroll: zoom   |   [ ] : base zoom factor   |   - = : zoom-out damping   |   "
+    "Colors / C: arc colors   |   Q / Esc: quit"
 )
 
 
@@ -46,6 +47,7 @@ class ArcRenderer:
         self.step_increment = 1
         # User zoom relative to the auto-fit view. Reset whenever the step set changes.
         self.zoom_scale = 1.0
+        self._debug_text = None
 
         # Leave room at the top for the Colors button (macosx toolbar cannot host custom icons).
         self.fig, self.ax = plt.subplots(figsize=(9, 4))
@@ -100,9 +102,38 @@ class ArcRenderer:
         self.ax.set_ylim(cy - half_h, cy + half_h)
         self.ax.set_aspect("equal", adjustable="box")
 
+    def _effective_zoom_factor(self) -> float:
+        """The per-step zoom factor for the *current* zoom_scale.
+
+        zoom_scale == 1 is the default auto-fit view, so factor == zoom_factor
+        there. As zoom_scale grows (further zoomed out), the effective factor
+        smoothly decays toward 1 (slower steps) - continuous in log-scale, no
+        thresholds/tiers. Zooming in (zoom_scale < 1) is left at the base rate.
+        """
+        damping = self.style.zoom_out_damping
+        if damping <= 0 or self.zoom_scale <= 1:
+            return self.style.zoom_factor
+        log_out = math.log2(self.zoom_scale)
+        return 1 + (self.style.zoom_factor - 1) / (1 + damping * log_out)
+
+    def zoom_debug_line(self) -> str:
+        return (
+            f"zoom_scale={self.zoom_scale:.4g}   "
+            f"effective_factor={self._effective_zoom_factor():.4f}   "
+            f"base zoom_factor={self.style.zoom_factor:.3f} (edit: [ ])   "
+            f"zoom_out_damping={self.style.zoom_out_damping:.2f} (edit: - =)"
+        )
+
+    def _update_debug_text(self) -> None:
+        if self._debug_text is None:
+            self._debug_text = self.fig.text(
+                0.5, 0.055, "", ha="center", va="bottom", fontsize=8, color="steelblue"
+            )
+        self._debug_text.set_text(self.zoom_debug_line())
+
     def zoom_at(self, direction: str, cursor_x: float | None, cursor_y: float | None) -> None:
         """Zoom in ('up') or out ('down'). Pivot from StyleConfig.zoom_pivot."""
-        factor = self.style.zoom_factor
+        factor = self._effective_zoom_factor()
         if direction == "up":
             self.zoom_scale /= factor
         else:
@@ -120,16 +151,26 @@ class ArcRenderer:
             ax.set_xlim(cursor_x + (x0 - cursor_x) * f, cursor_x + (x1 - cursor_x) * f)
             ax.set_ylim(cursor_y + (y0 - cursor_y) * f, cursor_y + (y1 - cursor_y) * f)
             # Keep zoom_scale consistent with origin-based path for later redraws.
+            self._update_debug_text()
             self.fig.canvas.draw_idle()
             return
 
         self.apply_view_limits()
+        self._update_debug_text()
         self.fig.canvas.draw_idle()
 
     def reset_zoom(self) -> None:
         self.zoom_scale = 1.0
         self.apply_view_limits()
         self.fig.canvas.draw_idle()
+
+    def adjust_zoom_factor(self, delta: float) -> None:
+        self.style.zoom_factor = max(1.001, self.style.zoom_factor + delta)
+        self.redraw(preserve_zoom=True)
+
+    def adjust_zoom_out_damping(self, delta: float) -> None:
+        self.style.zoom_out_damping = max(0.0, self.style.zoom_out_damping + delta)
+        self.redraw(preserve_zoom=True)
 
     def _install_colors_button(self) -> None:
         """On-figure Colors control.
@@ -224,6 +265,7 @@ class ArcRenderer:
         ax.set_title(self.status_line(), fontsize=style.status_fontsize)
         self.fig.suptitle("")
         self._draw_controls_footer()
+        self._update_debug_text()
 
         self.fig.canvas.draw_idle()
 
