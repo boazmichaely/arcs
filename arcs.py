@@ -20,13 +20,13 @@ Controls (once the plot window has focus):
     Up / Down arrow keys                       -> zoom in / out (same as mouse wheel;
                                                    pivot is code-configurable, default: origin)
     Mouse wheel                                -> zoom in / out
-    [ / ]                                       -> decrease / increase the base zoom factor
-    - / =                                       -> decrease / increase zoom-out damping
+    Shift + Down / Shift + Up                  -> decrease / increase the base zoom factor
+    Shift + Left / Shift + Right               -> decrease / increase zoom damping
     C  (or the Colors button on the figure)    -> choose above/below arc colors
     Q / Escape                                 -> quit
 
-A debug line under the plot always shows the live zoom_scale, effective
-per-step factor, base zoom_factor, and zoom_out_damping while you tune them.
+The plot title always shows the live zoom_scale, effective per-step factor,
+base zoom_factor, and zoom_damping alongside the step/position info.
 """
 
 import argparse
@@ -104,20 +104,20 @@ def main(argv: list[str] | None = None) -> None:
             renderer.zoom_at("down", None, None)
             return
 
-        if key == "[":
-            renderer.adjust_zoom_factor(-0.01)
-            return
-
-        if key == "]":
+        if key == "shift+up":
             renderer.adjust_zoom_factor(0.01)
             return
 
-        if key == "-":
-            renderer.adjust_zoom_out_damping(-0.1)
+        if key == "shift+down":
+            renderer.adjust_zoom_factor(-0.01)
             return
 
-        if key == "=":
-            renderer.adjust_zoom_out_damping(0.1)
+        if key == "shift+right":
+            renderer.adjust_zoom_damping(0.1)
+            return
+
+        if key == "shift+left":
+            renderer.adjust_zoom_damping(-0.1)
             return
 
         if key and key.isdigit():
@@ -149,6 +149,11 @@ def main(argv: list[str] | None = None) -> None:
             sim.undo(renderer.step_increment)
             renderer.redraw()
             return
+
+        # Unrecognized key: print it so an unexpected key string (e.g. a
+        # backend reporting punctuation/modifiers differently) is easy to see
+        # instead of the key silently doing nothing.
+        print(f"[unhandled key] {key!r}", file=sys.stderr)
 
     def on_scroll(event) -> None:
         if event.inaxes != renderer.ax:

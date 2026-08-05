@@ -81,8 +81,8 @@ Click the plot window to give it focus, then:
 | `Left` | Undo by the remembered increment |
 | `Up` / `Down` | Zoom in / out (pivot: origin by default; change `StyleConfig.zoom_pivot` in code) |
 | Mouse wheel | Same zoom as `Up` / `Down` |
-| `[` / `]` | Decrease / increase the base zoom factor, live |
-| `-` / `=` | Decrease / increase zoom-out damping, live |
+| `Shift+Down` / `Shift+Up` | Decrease / increase the base zoom factor, live |
+| `Shift+Left` / `Shift+Right` | Decrease / increase zoom damping, live |
 | `C` or the **Colors** button | Choose above-arc and below-arc colors |
 | `Q` / `Escape` | Quit |
 
@@ -95,20 +95,24 @@ until you type a new number.
 ### Zoom sensitivity
 
 The per-step zoom factor (`StyleConfig.zoom_factor`, default `1.08`) shrinks
-smoothly and continuously as you zoom further out - each step changes it
-*less* the farther the view is from the default auto-fit, so a held key
-doesn't blow past content once you're already zoomed way out.
+smoothly and continuously the further the view is from the default auto-fit -
+each step changes it *less* the farther out (or, from a far view, back in)
+you are, so a held key doesn't blow past content. It depends only on
+*distance* from the default view, not on which direction you're currently
+pressing, so zoom-in and zoom-out share the same speed curve at a given zoom
+level (there's no separate "in" vs "out" damping).
 
-A blue debug line under the plot always shows the live `zoom_scale`,
-`effective_factor`, base `zoom_factor`, and `zoom_out_damping`. Press
-`[` / `]` to tune the base factor and `-` / `=` to tune the damping while
-watching the numbers and the zoom feel change, then bake whatever you land on
-into `StyleConfig` in `style.py` (or just tell me the values and I'll set
-them as the defaults):
+The plot title always shows the live `zoom` info (`scale`, `step_factor`,
+`base`, `damping`) alongside the step/position line. Use
+`Shift+Up`/`Shift+Down` to tune the base factor and `Shift+Left`/`Shift+Right`
+to tune the damping while watching the title and the zoom feel change, then
+bake whatever you land on into `StyleConfig` in `style.py` (or just tell me
+the values and I'll set them as the defaults):
 
 - `zoom_factor` - the base per-step factor right at the default view.
-- `zoom_out_damping` - how strongly zoomed-out steps slow down (`0` disables
-  damping and uses a constant `zoom_factor` everywhere).
+- `zoom_damping` - how strongly the factor shrinks as the view gets further
+  from the default (`0` disables damping and uses a constant `zoom_factor`
+  everywhere).
 
 ### Matplotlib toolbar
 

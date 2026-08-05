@@ -34,13 +34,16 @@ class StyleConfig:
     # Base per-step zoom factor (>1) used right at the default/auto-fit view.
     zoom_factor: float = 1.08
 
-    # Zoom-out sensitivity damping: the *effective* per-step factor shrinks
-    # smoothly (continuously, not in tiers) as the view gets further from the
-    # default auto-fit view, so a held key/scroll doesn't blow past content
-    # once you're already zoomed way out. 0 disables damping (constant
-    # zoom_factor everywhere); higher values slow zoomed-out steps down more.
+    # Zoom damping: the *effective* per-step factor shrinks smoothly
+    # (continuously, not in tiers) the further the view is from the default
+    # auto-fit view, so a held key/scroll doesn't blow past content once
+    # you're already zoomed way out. This depends only on *distance* from the
+    # default view, not on which direction you're currently pressing, so
+    # zooming in from a far-zoomed-out view is just as damped as zooming out
+    # further from there - zoom-in and zoom-out share the same speed curve.
+    # 0 disables damping (constant zoom_factor everywhere).
     # See ArcRenderer._effective_zoom_factor for the formula.
-    zoom_out_damping: float = 0.6
+    zoom_damping: float = 0.6
 
     # Practically unlimited zoom range (only guards against float overflow/underflow),
     # so deep zoom at large step counts keeps working - that's when it looks best,
