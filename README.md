@@ -8,6 +8,12 @@ step sequence one step at a time. Two variants, picked with `--variant`:
 | `default` (used if `--variant` is omitted) | Odd `n` right, even `n` left | Follows movement direction | Follows arc side |
 | `recaman` | Recamán's sequence: try `pos - n` (if non-negative and unvisited), else `pos + n` | Alternates by step parity (odd above, even below), independent of movement | Follows rotational direction: **clockwise** if arc side agrees with movement direction (above-and-right, or below-and-left), **counter-clockwise** otherwise |
 
+`default` at step 50:
+![default variant at step 50](assets/default-step50.png)
+
+`recaman` at step 50:
+![recaman variant at step 50](assets/recaman-step50.png)
+
 `default` starts at `[-5, 5]` and grows/zooms out by 5 on each side whenever
 a step lands outside the current view. `recaman` instead uses a fixed-width,
 full-figure-width viewport that auto-zooms out to keep every arc visible and
