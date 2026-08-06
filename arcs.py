@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Render half-circle arcs above/below a number line, one step at a time.
 
-Default rule (see rules.py for the pluggable policies, and VARIANTS for the
-other bundled sequence):
+"spiral" rule, the default (see rules.py for the pluggable policies, and
+VARIANTS for the other bundled sequence):
     Start at 0. For step n = 1, 2, 3, ...
       n odd  -> move right n steps, draw the arc above the line.
       n even -> move left n steps, draw the arc below the line.
@@ -56,8 +56,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument(
         "--variant",
         choices=sorted(VARIANTS),
-        default="default",
-        help="Which sequence/coloring rule to use (default: default). See rules.py VARIANTS.",
+        default="spiral",
+        help="Which sequence/coloring rule to use (default: spiral). See rules.py VARIANTS.",
     )
     parser.add_argument(
         "--max-label-step",

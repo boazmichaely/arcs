@@ -5,16 +5,16 @@ step sequence one step at a time. Two variants, picked with `--variant`:
 
 | `--variant` | Movement | Arc side (above/below) | Color |
 | --- | --- | --- | --- |
-| `default` (used if `--variant` is omitted) | Odd `n` right, even `n` left | Follows movement direction | Follows arc side |
+| `spiral` (used if `--variant` is omitted) | Odd `n` right, even `n` left | Follows movement direction | Follows arc side |
 | `recaman` | Recamán's sequence: try `pos - n` (if non-negative and unvisited), else `pos + n` | Alternates by step parity (odd above, even below), independent of movement | Follows rotational direction: **clockwise** if arc side agrees with movement direction (above-and-right, or below-and-left), **counter-clockwise** otherwise |
 
-`default` at step 50:
-![default variant at step 50](assets/default-step50.png)
+`spiral` at step 50:
+![spiral variant at step 50](assets/spiral-step50.png)
 
 `recaman` at step 50:
 ![recaman variant at step 50](assets/recaman-step50.png)
 
-`default` starts at `[-5, 5]` and grows/zooms out by 5 on each side whenever
+`spiral` starts at `[-5, 5]` and grows/zooms out by 5 on each side whenever
 a step lands outside the current view. `recaman` instead uses a fixed-width,
 full-figure-width viewport that auto-zooms out to keep every arc visible and
 auto-pans to stay left-aligned at 0 (it never goes negative) until you pan
@@ -34,7 +34,7 @@ number line) is inspired by the classic visualization of
 Bernardo Recamán Santos. The arc-drawing method is credited to mathematician
 Edmund Harriss, and it was popularized by Numberphile's 2018 video
 ["The Slightly Spooky Recamán Sequence"](https://www.youtube.com/watch?v=FGC5TdIiT9U).
-`default` (alternate right/left by a fixed odd/even parity, no "avoid
+`spiral` (alternate right/left by a fixed odd/even parity, no "avoid
 negatives or repeats" fallback) is a simpler relative of Recamán's actual
 rule; run with `--variant recaman` for the real thing.
 

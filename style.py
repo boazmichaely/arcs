@@ -35,7 +35,7 @@ class StyleConfig:
     max_step_to_render_arc_size: int = 10
 
     # Show "smallest missing: N" in the status line - only meaningful for a
-    # rule that can skip numbers (e.g. Recaman's); the default rule visits
+    # rule that can skip numbers (e.g. Recaman's); the spiral rule visits
     # every integer along the way so it isn't shown there.
     show_smallest_missing: bool = False
 

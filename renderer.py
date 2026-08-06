@@ -92,7 +92,7 @@ class ArcRenderer:
         """Fires on *any* xlim change, including the toolbar's own Pan, Zoom,
         Home, and Back/Forward tools - not just our own code (see
         _suspend_view_change_tracking). Only meaningful for a fixed-width
-        viewport (e.g. recaman); the default variant has no manual-pan
+        viewport (e.g. recaman); the spiral variant has no manual-pan
         concept and keeps always auto-fitting around the origin."""
         if self._suspend_view_tracking_depth > 0:
             return
@@ -141,7 +141,7 @@ class ArcRenderer:
         height together, to keep circles circular) just enough keeps
         everything visible without ever needing to shrink the box away from
         the full window width. A no-op (1.0) for the auto-fit-everything
-        default variant, which already never clips.
+        spiral variant, which already never clips.
         """
         style = self.style
         sim = self.simulation
@@ -264,7 +264,7 @@ class ArcRenderer:
         y0, y1 = ax.get_ylim()
 
         if self.style.viewport_width is None and self.style.zoom_pivot != ZOOM_PIVOT_CURSOR:
-            # Deliberate: the default variant always zooms toward the true
+            # Deliberate: the spiral variant always zooms toward the true
             # origin (the "moving spiral" effect), regardless of any pan.
             px, py = 0.0, 0.0
         elif cursor_x is not None and cursor_y is not None:

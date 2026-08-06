@@ -10,7 +10,7 @@ or renderer.py:
   ColorRule       - given the arc's orientation and actual move direction,
                     which of the two configured colors does it use?
 
-For the default variant (AlternatingParityRule), orientation and movement
+For the spiral variant (AlternatingParityRule), orientation and movement
 direction coincide by construction (odd n always moves right), which is why
 color-by-orientation and color-by-direction look identical there. They
 diverge for a rule like Recaman's, where the move direction depends on
@@ -134,7 +134,7 @@ DEFAULT_COLOR_RULE = SideColorRule()
 # entry here for a new sequence/visualization instead of touching renderer.py
 # or simulation.py.
 VARIANTS: dict[str, dict] = {
-    "default": {
+    "spiral": {
         "description": "Odd n moves right (arc above), even n moves left (arc below).",
         "rule": DEFAULT_RULE,
         "orientation": DEFAULT_ORIENTATION,
