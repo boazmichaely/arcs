@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>arcs - spiral (browser demo)</title>
+<title>arcs - recaman (browser demo)</title>
 <style>
   body { font-family: system-ui, sans-serif; margin: 1.5rem; max-width: 900px; }
   #status { color: #555; }
@@ -13,20 +13,21 @@
 </style>
 </head>
 <body>
-  <h1>arcs - spiral</h1>
+  <h1>arcs - recaman</h1>
   <p>
-    Browser build of the <code>spiral</code> variant. Also see the
-    <a href="recaman.html">recaman variant</a>, or the
+    Browser build of the <code>recaman</code> variant. Also see the
+    <a href="index.html">spiral variant</a>, or the
     <a href="https://github.com/boazmichaely/arcs">repo</a> for the full desktop
     version and CLI options. Click the plot once loaded, then use
     <code>Right</code>/<code>Left</code>/<code>Up</code>/<code>Down</code>,
-    digits + <code>Enter</code>, or the mouse wheel.
+    digits + <code>Enter</code>, the mouse wheel, <code>Shift+Left</code>/
+    <code>Shift+Right</code> to pan, and <code>R</code> to reset the view.
   </p>
   <p id="status">Loading Pyodide and matplotlib&hellip; (first load can take ~10-20s)</p>
   <div id="mpl-target"></div>
 
   <script src="https://cdn.jsdelivr.net/pyodide/v314.0.4/full/pyodide.js"></script>
-  <script>window.ARCS_VARIANT = "spiral";</script>
+  <script>window.ARCS_VARIANT = "recaman";</script>
   <script src="app.js"></script>
 </body>
 </html>

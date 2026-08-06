@@ -1,5 +1,9 @@
 # arcs
 
+Try it in the browser: [spiral](https://boazmichaely.github.io/arcs/) /
+[recaman](https://boazmichaely.github.io/arcs/recaman.html) (runs entirely
+client-side via [Pyodide](https://pyodide.org); first load takes ~10-20s).
+
 Renders perfect half-circle arcs above and below a number line, tracing a
 step sequence one step at a time. Steps alternate above/below by parity
 (odd above, even below) in both variants, picked with `--variant`:
