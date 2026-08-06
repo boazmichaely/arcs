@@ -105,9 +105,37 @@ def main(argv: list[str] | None = None) -> None:
 
     renderer = ArcRenderer(sim, style=style, color_rule=variant["color_rule"])
 
-    def on_key(event) -> None:
-        key = event.key
+    # In the browser (Pyodide), matplotlib's WebAgg JS only fires one
+    # key_press per physical key-down (see mpl.js's "prevent repeat events"),
+    # unlike desktop backends which get the OS's native autorepeat. Simulate
+    # it ourselves there with a timer, started on press and stopped on
+    # key_release_event (which isn't deduped). No-op on desktop.
+    _REPEATABLE_KEYS = {"up", "down", "shift+up", "shift+down", "shift+left", "shift+right", "left", "right", " ", "space"}
+    _KEY_REPEAT_INTERVAL_MS = 120
+    _repeat_timers: dict[str, object] = {}
 
+    def _stop_repeat(key: str) -> None:
+        timer = _repeat_timers.pop(key, None)
+        if timer is not None:
+            timer.stop()
+
+    def _start_repeat(key: str) -> None:
+        if sys.platform != "emscripten" or key in _repeat_timers:
+            return
+        timer = renderer.fig.canvas.new_timer(interval=_KEY_REPEAT_INTERVAL_MS)
+        timer.add_callback(lambda: handle_key(key))
+        _repeat_timers[key] = timer
+        timer.start()
+
+    def on_key_release(event) -> None:
+        _stop_repeat(event.key)
+
+    def on_key(event) -> None:
+        handle_key(event.key)
+        if event.key in _REPEATABLE_KEYS:
+            _start_repeat(event.key)
+
+    def handle_key(key: str) -> None:
         if key in ("q", "escape"):
             plt.close(renderer.fig)
             return
@@ -186,6 +214,7 @@ def main(argv: list[str] | None = None) -> None:
         renderer.zoom_at(direction, event.xdata, event.ydata)
 
     renderer.fig.canvas.mpl_connect("key_press_event", on_key)
+    renderer.fig.canvas.mpl_connect("key_release_event", on_key_release)
     renderer.fig.canvas.mpl_connect("scroll_event", on_scroll)
     renderer.redraw()
     plt.show()
