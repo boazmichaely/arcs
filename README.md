@@ -26,10 +26,10 @@ Bernardo Recamán Santos. The arc-drawing method is credited to mathematician
 Edmund Harriss, and it was popularized by Numberphile's 2018 video
 ["The Slightly Spooky Recamán Sequence"](https://www.youtube.com/watch?v=FGC5TdIiT9U).
 
-The rule implemented here (alternate right/left by a fixed odd/even parity, no
+The default rule here (alternate right/left by a fixed odd/even parity, no
 "avoid negatives or repeats" fallback) is a simpler relative of Recamán's
-actual rule - see the [Design](#design) section below for how to swap in a
-true Recamán `StepRule` later.
+actual rule. Run with `--variant recaman` for the real thing - see
+[Variants](#variants) below.
 
 ## Install
 
@@ -60,10 +60,11 @@ pip install -r requirements.txt
 ## Run
 
 ```bash
-python arcs.py            # start interactive, at step 0
-python arcs.py 25         # pre-run 25 steps, show the result, then stay interactive
+python arcs.py                    # start interactive, at step 0
+python arcs.py 25                 # pre-run 25 steps, show the result, then stay interactive
 python arcs.py --max-label-step 20
-python arcs.py --above-color blue --below-color red
+python arcs.py --color-a blue --color-b red
+python arcs.py 30 --variant recaman
 ```
 
 (On Windows use `python` the same way, once the venv above is activated.)
@@ -82,7 +83,8 @@ Click the plot window to give it focus, then:
 | `Up` / `Down` | Zoom in / out (pivot: origin by default; change `StyleConfig.zoom_pivot` in code) |
 | Mouse wheel | Same zoom as `Up` / `Down` |
 | `Shift+Down` / `Shift+Up` | Decrease / increase zoom speed, live |
-| `C` or the **Colors** button | Choose above-arc and below-arc colors |
+| `Shift+Left` / `Shift+Right` | Pan the viewport left / right (only variants with a fixed-width viewport, e.g. `recaman`) |
+| `C` or the **Colors** button | Choose the two arc colors |
 | `Q` / `Escape` | Quit |
 
 The remembered increment is shown in the plot title. Typing a number and
@@ -98,6 +100,20 @@ shown in the title as a percentage (default `+5.0%/press`, from
 `StyleConfig.zoom_factor = 1.05`). Tune it live with `Shift+Up`/`Shift+Down`
 and watch the title, then tell me what felt right and I'll set it as the
 default in `style.py`.
+
+## Variants
+
+`--variant` bundles a movement rule with an arc-orientation rule and a
+coloring rule (see [Design](#design)):
+
+| `--variant` | Movement | Arc side (above/below) | Color |
+| --- | --- | --- | --- |
+| `default` | Odd `n` right, even `n` left | Follows movement direction | Follows arc side |
+| `recaman` | Recamán's sequence: try `pos - n` (if non-negative and unvisited), else `pos + n` | Alternates by step parity (odd above, even below), independent of movement | Follows rotational direction: **clockwise** if arc side agrees with movement direction (above-and-right, or below-and-left), **counter-clockwise** otherwise |
+
+`recaman` also uses a fixed-width, pannable viewport (`Shift+Left`/`Right`)
+instead of always fitting the whole line, since the sequence can range far
+wider than it is tall.
 
 ### Matplotlib toolbar
 
@@ -122,23 +138,28 @@ Press `C` or click **Colors**. On macOS this opens the system color picker (no t
 
 ## Design
 
-The movement rule is intentionally decoupled from everything else:
+A variant is three independent, pluggable policies, all defined in
+`rules.py`, plus any `StyleConfig` overrides it needs:
 
-- `rules.py` - `StepRule` is the pluggable policy that decides the next
-  position for step `n`, given the current position and the set of positions
-  visited so far. `AlternatingParityRule` (odd -> right, even -> left) is the
-  only rule implemented today.
-- `simulation.py` - `Simulation` holds step history and derives the growing
-  view bounds. It is rule-agnostic: it just calls whatever `StepRule` it was
-  given.
-- `renderer.py` - `ArcRenderer` draws the number line, ticks, arcs, and
-  markers. It derives "arc above" vs. "arc below" from the actual direction
-  of movement (moved right -> above, moved left -> below), not from the
-  parity of `n`, so it never needs to change when the rule changes.
-- `style.py` - `StyleConfig` centralizes colors, label cutoff, and zoom
-  pivot (`ZOOM_PIVOT_ORIGIN` by default; set to `ZOOM_PIVOT_CURSOR` in code
-  to zoom toward the mouse).
+- `StepRule` - given step `n`, the current position, and the set of
+  positions visited so far, where do we move to next? (`AlternatingParityRule`,
+  `RecamanRule`)
+- `OrientationRule` - given the move, is the arc drawn above or below the
+  line? (`DirectionOrientation`: follows movement direction; `AlternatingOrientation`:
+  follows step parity)
+- `ColorRule` - given the arc's orientation and actual move direction, which
+  of the two configured colors (`StyleConfig.color_a` / `color_b`) does it
+  use? (`SideColorRule`: by orientation; `ClockwiseColorRule`: by rotational
+  direction)
 
-To try a different rule (e.g. a Recaman-sequence-style "try left, fall back to
-right, no repeats" policy), add a new `StepRule` subclass in `rules.py` and
-pass it into `Simulation(rule=...)` - no changes needed elsewhere.
+`rules.py`'s `VARIANTS` dict bundles a named triple of these plus style
+overrides (e.g. `recaman`'s fixed-width viewport) - `arcs.py --variant`
+just looks up a name in it.
+
+`simulation.py` and `renderer.py` are policy-agnostic: `Simulation` calls
+whatever `StepRule`/`OrientationRule` it was given and stores the results on
+each `Step`; `ArcRenderer` calls whatever `ColorRule` it was given. Neither
+needs to change when adding a new variant.
+
+To add another variant, add the new rule(s) to `rules.py` and a new entry to
+`VARIANTS` - no changes needed in `simulation.py` or `renderer.py`.

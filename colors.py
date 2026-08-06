@@ -162,8 +162,8 @@ def ask_color(title: str, initial: str = "black") -> str | None:
     return None
 
 
-def ask_arc_colors(above: str, below: str) -> tuple[str, str]:
-    """Prompt for above then below colors; unchanged if a prompt is cancelled."""
-    new_above = ask_color("Above-arc color", above) or above
-    new_below = ask_color("Below-arc color", below) or below
-    return new_above, new_below
+def ask_two_colors(label_a: str, label_b: str, color_a: str, color_b: str) -> tuple[str, str]:
+    """Prompt for color A then color B; unchanged if a prompt is cancelled."""
+    new_a = ask_color(f"{label_a} color", color_a) or color_a
+    new_b = ask_color(f"{label_b} color", color_b) or color_b
+    return new_a, new_b

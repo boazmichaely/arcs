@@ -7,7 +7,7 @@ track of history, so it works unchanged no matter how the rule is defined.
 
 from dataclasses import dataclass, field
 
-from rules import StepRule, DEFAULT_RULE
+from rules import DEFAULT_ORIENTATION, DEFAULT_RULE, OrientationRule, StepRule
 
 INITIAL_BOUND = 5
 BOUND_GROWTH = 5
@@ -18,10 +18,10 @@ class Step:
     n: int
     start: int
     end: int
+    is_above: bool
 
     @property
-    def is_above(self) -> bool:
-        """Arcs are placed above the line when the move was to the right."""
+    def moved_right(self) -> bool:
         return self.end > self.start
 
     @property
@@ -36,8 +36,9 @@ class Step:
 class Simulation:
     """Holds the full step history for a run and derives view bounds from it."""
 
-    def __init__(self, rule: StepRule = DEFAULT_RULE):
+    def __init__(self, rule: StepRule = DEFAULT_RULE, orientation: OrientationRule = DEFAULT_ORIENTATION):
         self.rule = rule
+        self.orientation = orientation
         self.steps: list[Step] = []
         self._visited: set[int] = {0}
 
@@ -54,7 +55,8 @@ class Simulation:
             n = len(self.steps) + 1
             pos = self.current_position
             new_pos = self.rule.next_position(n, pos, frozenset(self._visited))
-            self.steps.append(Step(n=n, start=pos, end=new_pos))
+            is_above = self.orientation.is_above(n, pos, new_pos)
+            self.steps.append(Step(n=n, start=pos, end=new_pos, is_above=is_above))
             self._visited.add(new_pos)
 
     def undo(self, count: int = 1) -> None:

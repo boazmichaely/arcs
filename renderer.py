@@ -1,6 +1,7 @@
 """Matplotlib rendering for a Simulation. Knows nothing about which StepRule
-produced the steps, only about (start, end) pairs and their derived
-above/below/radius/center properties.
+or OrientationRule produced the steps, only about each Step's derived
+is_above/moved_right/radius/center properties, and calls whatever ColorRule
+it was given to turn those into a color.
 """
 
 from __future__ import annotations
@@ -11,14 +12,15 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Arc
 from matplotlib.widgets import Button
 
-from colors import ask_arc_colors
+from colors import ask_two_colors
+from rules import ColorRule, DEFAULT_COLOR_RULE
 from simulation import Simulation
 from style import ZOOM_PIVOT_CURSOR, StyleConfig
 
 CONTROLS_TEXT = (
-    "Right / Space / Enter: advance by increment   |   type digits + Enter: set increment & advance   |   "
-    "Backspace: edit typed count   |   Left: undo by increment   |   "
-    "Up / Down / Scroll: zoom   |   Shift+Up / Shift+Down: zoom speed   |   "
+    "Right / Space / Enter: advance   |   digits + Enter: set increment & advance   |   "
+    "Backspace: edit typed count   |   Left: undo   |   Up / Down / Scroll: zoom   |   "
+    "Shift+Up/Down: zoom speed   |   Shift+Left/Right: pan (viewport only)   |   "
     "Colors / C: arc colors   |   Q / Esc: quit"
 )
 
@@ -37,9 +39,15 @@ def _nice_tick_step(span: float, target_ticks: int = 10) -> float:
 
 
 class ArcRenderer:
-    def __init__(self, simulation: Simulation, style: StyleConfig | None = None):
+    def __init__(
+        self,
+        simulation: Simulation,
+        style: StyleConfig | None = None,
+        color_rule: ColorRule = DEFAULT_COLOR_RULE,
+    ):
         self.simulation = simulation
         self.style = style or StyleConfig()
+        self.color_rule = color_rule
         self.input_buffer = ""
         # Remembered step count: used for advance/undo whenever no digits are
         # currently typed, and updated whenever a typed number is confirmed
@@ -47,6 +55,11 @@ class ArcRenderer:
         self.step_increment = 1
         # User zoom relative to the auto-fit view. Reset whenever the step set changes.
         self.zoom_scale = 1.0
+        # Viewport center in data units. Only used when style.viewport_width
+        # is set; otherwise the view always spans the whole line and this is
+        # ignored. Reset to follow the current position whenever the step
+        # set changes (same "reset unless preserved" rule as zoom_scale).
+        self.pan_center = 0.0
 
         # Leave room at the top for the Colors button (macosx toolbar cannot host custom icons).
         self.fig, self.ax = plt.subplots(figsize=(9, 4))
@@ -70,24 +83,34 @@ class ArcRenderer:
         typed = f"  |  typed: {self.input_buffer}" if self.input_buffer else ""
         speed_pct = (self.style.zoom_factor - 1) * 100
         zoom = f"  |  zoom speed: {speed_pct:+.1f}%/press (scale={self.zoom_scale:.3g})"
-        return f"Step {step}   Position {pos}   |  increment: {self.step_increment}{typed}{zoom}"
+        pan = f"  |  view center: {self.pan_center:.3g}" if self.style.viewport_width is not None else ""
+        return f"Step {step}   Position {pos}   |  increment: {self.step_increment}{typed}{zoom}{pan}"
 
     def default_limits(self) -> tuple[tuple[float, float], tuple[float, float]]:
-        """Auto-fit limits that show the whole line and every arc."""
+        """Baseline limits before zoom_scale is applied.
+
+        Normally this auto-fits the whole line and every arc. If
+        style.viewport_width is set, it instead returns a fixed-width window
+        centered on self.pan_center, since the whole line may be far too
+        wide to show at once (e.g. Recaman's sequence).
+        """
         style = self.style
         sim = self.simulation
-        line_min, line_max = sim.bounds()
         max_radius = sim.max_radius()
-        x_pad = (line_max - line_min) * style.padding_fraction
         y_extent = max(max_radius, 1.0)
         y_pad = y_extent * style.padding_fraction
-        return (
-            (line_min - x_pad, line_max + x_pad),
-            (-(y_extent + y_pad), y_extent + y_pad),
-        )
+        y_limits = (-(y_extent + y_pad), y_extent + y_pad)
+
+        if style.viewport_width is not None:
+            half_w = style.viewport_width / 2
+            return (self.pan_center - half_w, self.pan_center + half_w), y_limits
+
+        line_min, line_max = sim.bounds()
+        x_pad = (line_max - line_min) * style.padding_fraction
+        return (line_min - x_pad, line_max + x_pad), y_limits
 
     def apply_view_limits(self) -> None:
-        """Apply auto-fit limits scaled by zoom_scale around the configured pivot."""
+        """Apply the baseline limits scaled by zoom_scale around the configured pivot."""
         (x0, x1), (y0, y1) = self.default_limits()
         scale = self.zoom_scale
         # Zoom in => smaller window => scale < 1. Pivot stays fixed.
@@ -95,13 +118,25 @@ class ArcRenderer:
         cy = (y0 + y1) / 2
         # For origin pivot, center the view on (0, 0) rather than the midpoint of
         # the auto-fit box (which is already ~0 for this rule, but stay explicit).
-        if self.style.zoom_pivot != ZOOM_PIVOT_CURSOR:
+        # A fixed-width viewport has its own pan-controlled center instead -
+        # there's no single "origin" to snap back to.
+        if self.style.viewport_width is None and self.style.zoom_pivot != ZOOM_PIVOT_CURSOR:
             cx, cy = 0.0, 0.0
         half_w = (x1 - x0) / 2 * scale
         half_h = (y1 - y0) / 2 * scale
         self.ax.set_xlim(cx - half_w, cx + half_w)
         self.ax.set_ylim(cy - half_h, cy + half_h)
         self.ax.set_aspect("equal", adjustable="box")
+
+    def pan_by(self, direction: int) -> None:
+        """Slide a fixed-width viewport left (-1) or right (+1). No-op otherwise."""
+        if self.style.viewport_width is None:
+            return
+        step = self.style.viewport_width * self.zoom_scale * self.style.pan_step_fraction
+        self.pan_center += direction * step
+        self.apply_view_limits()
+        self._refresh_title()
+        self.fig.canvas.draw_idle()
 
     def _refresh_title(self) -> None:
         self.ax.set_title(self.status_line(), fontsize=self.style.status_fontsize)
@@ -156,10 +191,11 @@ class ArcRenderer:
         self._colors_button.on_clicked(lambda _evt: self.open_color_settings())
 
     def open_color_settings(self) -> None:
-        """Prompt for above/below arc colors and redraw."""
-        above, below = ask_arc_colors(self.style.above_color, self.style.below_color)
-        self.style.above_color = above
-        self.style.below_color = below
+        """Prompt for the two arc colors and redraw."""
+        style = self.style
+        color_a, color_b = ask_two_colors(style.color_a_label, style.color_b_label, style.color_a, style.color_b)
+        style.color_a = color_a
+        style.color_b = color_b
         self.redraw(preserve_zoom=True)
 
     def redraw(self, *, preserve_zoom: bool = False) -> None:
@@ -170,18 +206,24 @@ class ArcRenderer:
 
         if not preserve_zoom:
             self.zoom_scale = 1.0
+            if style.viewport_width is not None:
+                self.pan_center = float(sim.current_position)
 
         self.apply_view_limits()
 
         # The number line itself.
         ax.axhline(0, color=style.line_color, linewidth=1.2, zorder=1)
 
-        line_min, line_max = sim.bounds()
-        tick_step = _nice_tick_step(line_max - line_min)
-        first_tick = math.floor(line_min / tick_step) * tick_step
+        # Ticks are derived from the *actual current view* (post pan/zoom),
+        # not the full data bounds - matplotlib expands the view to fit
+        # whatever ticks you set (even with autoscale off), so ticks outside
+        # the current view would silently widen it back out.
+        view_min, view_max = ax.get_xlim()
+        tick_step = _nice_tick_step(view_max - view_min)
+        first_tick = math.ceil(view_min / tick_step) * tick_step
         ticks = []
         t = first_tick
-        while t <= line_max + 1e-9:
+        while t <= view_max + 1e-9:
             ticks.append(round(t, 6))
             t += tick_step
         ax.set_xticks(ticks)
@@ -196,7 +238,8 @@ class ArcRenderer:
 
         # Arcs.
         for step in sim.steps:
-            color = style.above_color if step.is_above else style.below_color
+            color_key = self.color_rule.color_key(step.is_above, step.moved_right)
+            color = style.color_a if color_key == "a" else style.color_b
             theta1, theta2 = (0, 180) if step.is_above else (180, 360)
             arc = Arc(
                 (step.center, 0),
@@ -211,7 +254,10 @@ class ArcRenderer:
             ax.add_patch(arc)
 
             if show_labels:
-                label = str(step.n) if step.is_above else f"-{step.n}"
+                # Signed by move direction (not by which side the arc is
+                # drawn on) so the label always reads as "distance moved",
+                # even for a rule where side and direction are independent.
+                label = str(step.n) if step.moved_right else f"-{step.n}"
                 label_y = step.radius * (1.12 if step.is_above else -1.12)
                 va = "bottom" if step.is_above else "top"
                 ax.text(

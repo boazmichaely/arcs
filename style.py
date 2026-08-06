@@ -10,9 +10,16 @@ ZOOM_PIVOT_CURSOR = "cursor"
 
 @dataclass
 class StyleConfig:
-    # Both default to the same color; change independently to tell above/below apart.
-    above_color: str = "black"
-    below_color: str = "black"
+    # Two generic arc colors. Which arcs get which is decided by the active
+    # ColorRule (rules.py) - e.g. by which side the arc is drawn on, or by
+    # its rotational direction. Both default to the same color; change
+    # independently to tell the two groups apart.
+    color_a: str = "black"
+    color_b: str = "black"
+    # Labels used only for the color-picker dialog title, so it's obvious
+    # which group is being picked for the active variant.
+    color_a_label: str = "Above-arc"
+    color_b_label: str = "Below-arc"
 
     line_color: str = "black"
     origin_marker_color: str = "black"
@@ -40,3 +47,14 @@ class StyleConfig:
     # since it reads as a smoothly receding/advancing spiral.
     zoom_scale_min: float = 1e-9
     zoom_scale_max: float = 1e9
+
+    # Fixed-width sliding viewport instead of always fitting the whole line.
+    # None (default) keeps the original "always show everything" behavior,
+    # which suits a sequence that grows roughly as fast horizontally as
+    # vertically. Set to a number of data units for a sequence (e.g.
+    # Recaman's) that can range far wider than it's tall, where fitting the
+    # entire thing into one view would need an absurdly wide window - a
+    # fixed-width, pannable window works better there.
+    viewport_width: float | None = None
+    # Fraction of the (zoomed) viewport width moved per pan key press.
+    pan_step_fraction: float = 0.2

@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """Render half-circle arcs above/below a number line, one step at a time.
 
-Rule (see rules.py for the pluggable policy):
+Default rule (see rules.py for the pluggable policies, and VARIANTS for the
+other bundled sequence):
     Start at 0. For step n = 1, 2, 3, ...
       n odd  -> move right n steps, draw the arc above the line.
       n even -> move left n steps, draw the arc below the line.
 
 Usage:
-    python arcs.py            # start interactive, at step 0
-    python arcs.py 25         # pre-run 25 steps, show the result, then stay interactive
+    python arcs.py                    # start interactive, at step 0
+    python arcs.py 25                 # pre-run 25 steps, show the result, then stay interactive
+    python arcs.py --variant recaman  # render Recaman's sequence instead
 
 Controls (once the plot window has focus):
     Right / Space / Enter (no digits typed)  -> advance by the remembered increment (starts at 1)
@@ -21,7 +23,9 @@ Controls (once the plot window has focus):
                                                    pivot is code-configurable, default: origin)
     Mouse wheel                                -> zoom in / out
     Shift + Down / Shift + Up                  -> decrease / increase zoom speed
-    C  (or the Colors button on the figure)    -> choose above/below arc colors
+    Shift + Left / Shift + Right               -> pan the viewport (only variants with a
+                                                   fixed-width viewport, e.g. recaman)
+    C  (or the Colors button on the figure)    -> choose the two arc colors
     Q / Escape                                 -> quit
 
 The plot title always shows the live zoom speed and zoom scale alongside the
@@ -34,7 +38,7 @@ import sys
 import matplotlib.pyplot as plt
 
 from renderer import ArcRenderer
-from rules import DEFAULT_RULE
+from rules import VARIANTS
 from simulation import Simulation
 from style import StyleConfig
 
@@ -49,40 +53,47 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         help="Optional number of steps to run immediately before showing the window.",
     )
     parser.add_argument(
+        "--variant",
+        choices=sorted(VARIANTS),
+        default="default",
+        help="Which sequence/coloring rule to use (default: default). See rules.py VARIANTS.",
+    )
+    parser.add_argument(
         "--max-label-step",
         type=int,
         default=None,
         help="Hide arc-size labels once current step exceeds this (default: 10).",
     )
     parser.add_argument(
-        "--above-color",
+        "--color-a",
         default=None,
-        help="Initial color for arcs above the line (default: black).",
+        help="Initial color for group-A arcs (default: black).",
     )
     parser.add_argument(
-        "--below-color",
+        "--color-b",
         default=None,
-        help="Initial color for arcs below the line (default: black).",
+        help="Initial color for group-B arcs (default: black).",
     )
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> None:
     args = parse_args(sys.argv[1:] if argv is None else argv)
+    variant = VARIANTS[args.variant]
 
-    style = StyleConfig()
+    style = StyleConfig(**variant["style"])
     if args.max_label_step is not None:
         style.max_step_to_render_arc_size = args.max_label_step
-    if args.above_color:
-        style.above_color = args.above_color
-    if args.below_color:
-        style.below_color = args.below_color
+    if args.color_a:
+        style.color_a = args.color_a
+    if args.color_b:
+        style.color_b = args.color_b
 
-    sim = Simulation(rule=DEFAULT_RULE)
+    sim = Simulation(rule=variant["rule"], orientation=variant["orientation"])
     if args.n:
         sim.advance(args.n)
 
-    renderer = ArcRenderer(sim, style=style)
+    renderer = ArcRenderer(sim, style=style, color_rule=variant["color_rule"])
 
     def on_key(event) -> None:
         key = event.key
@@ -109,6 +120,14 @@ def main(argv: list[str] | None = None) -> None:
 
         if key == "shift+down":
             renderer.adjust_zoom_factor(-0.01)
+            return
+
+        if key == "shift+left":
+            renderer.pan_by(-1)
+            return
+
+        if key == "shift+right":
+            renderer.pan_by(1)
             return
 
         if key and key.isdigit():
