@@ -1,18 +1,21 @@
 # arcs
 
-Renders perfect half-circle arcs above and below a number line, following this rule:
+Renders perfect half-circle arcs above and below a number line, tracing a
+step sequence one step at a time. Two variants, picked with `--variant`:
 
-- Start at 0.
-- For step `n = 1, 2, 3, ...`:
-  - if `n` is odd, move **right** `n` steps and draw the arc **above** the line.
-  - if `n` is even, move **left** `n` steps and draw the arc **below** the line.
+| `--variant` | Movement | Arc side (above/below) | Color |
+| --- | --- | --- | --- |
+| `default` (used if `--variant` is omitted) | Odd `n` right, even `n` left | Follows movement direction | Follows arc side |
+| `recaman` | Recamán's sequence: try `pos - n` (if non-negative and unvisited), else `pos + n` | Alternates by step parity (odd above, even below), independent of movement | Follows rotational direction: **clockwise** if arc side agrees with movement direction (above-and-right, or below-and-left), **counter-clockwise** otherwise |
 
-The line starts as `[-5, 5]`. Whenever a step would land outside the current
-view, the line grows by 5 on each side (10 total), and the view zooms out so
-the whole line and every arc drawn so far stay visible. Arcs are true circles
-(the plot uses a 1:1 aspect ratio), and the window is freely resizable.
+`default` starts at `[-5, 5]` and grows/zooms out by 5 on each side whenever
+a step lands outside the current view. `recaman` instead uses a fixed-width,
+full-figure-width viewport that auto-zooms out to keep every arc visible and
+auto-pans to stay left-aligned at 0 (it never goes negative) until you pan
+manually - see [Variants](#variants) below for the rest of its behavior.
 
-Arc-size labels show the signed step (`n` above, `-n` below). Labels are hidden
+Arcs are true circles (1:1 aspect ratio), and the window is freely resizable.
+Arc-size labels show the signed step (`n` above, `-n` below) and are hidden
 once the current step exceeds `max_step_to_render_arc_size` (default **10**);
 undo back under that limit and they reappear.
 
@@ -25,11 +28,9 @@ number line) is inspired by the classic visualization of
 Bernardo Recamán Santos. The arc-drawing method is credited to mathematician
 Edmund Harriss, and it was popularized by Numberphile's 2018 video
 ["The Slightly Spooky Recamán Sequence"](https://www.youtube.com/watch?v=FGC5TdIiT9U).
-
-The default rule here (alternate right/left by a fixed odd/even parity, no
-"avoid negatives or repeats" fallback) is a simpler relative of Recamán's
-actual rule. Run with `--variant recaman` for the real thing - see
-[Variants](#variants) below.
+`default` (alternate right/left by a fixed odd/even parity, no "avoid
+negatives or repeats" fallback) is a simpler relative of Recamán's actual
+rule; run with `--variant recaman` for the real thing.
 
 ## Install
 
@@ -104,12 +105,8 @@ shown in the title as a percentage (default `+5.0%/press`, from
 ## Variants
 
 `--variant` bundles a movement rule with an arc-orientation rule and a
-coloring rule (see [Design](#design)):
-
-| `--variant` | Movement | Arc side (above/below) | Color |
-| --- | --- | --- | --- |
-| `default` | Odd `n` right, even `n` left | Follows movement direction | Follows arc side |
-| `recaman` | Recamán's sequence: try `pos - n` (if non-negative and unvisited), else `pos + n` | Alternates by step parity (odd above, even below), independent of movement | Follows rotational direction: **clockwise** if arc side agrees with movement direction (above-and-right, or below-and-left), **counter-clockwise** otherwise |
+coloring rule (see [Design](#design); the table at the top has the two
+bundled today).
 
 `recaman` uses a fixed-width, full-figure-width viewport (it can range far
 wider than it is tall) that auto-zooms out to keep every arc so far visible,

@@ -68,12 +68,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument(
         "--color-a",
         default=None,
-        help="Initial color for group-A arcs (default: black).",
+        help="Initial color for group-A arcs (default: blue).",
     )
     parser.add_argument(
         "--color-b",
         default=None,
-        help="Initial color for group-B arcs (default: black).",
+        help="Initial color for group-B arcs (default: red).",
     )
     parser.add_argument(
         "--smallest-missing",
