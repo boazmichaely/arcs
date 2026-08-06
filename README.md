@@ -30,6 +30,8 @@ Arc-size labels show the signed step (`n` above, `-n` below) and are hidden
 once the current step exceeds `max_step_to_render_arc_size` (default **10**);
 undo back under that limit and they reappear.
 
+## Demo
+
 Prefer not to install anything? Try it in the browser:
 [spiral](https://boazmichaely.github.io/arcs/) /
 [recaman](https://boazmichaely.github.io/arcs/recaman.html). Runs entirely
