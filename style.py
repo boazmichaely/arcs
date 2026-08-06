@@ -47,17 +47,18 @@ class StyleConfig:
     zoom_scale_min: float = 1e-9
     zoom_scale_max: float = 1e9
 
-    # Fixed-size sliding viewport instead of always fitting the whole line.
-    # None (default) keeps the original "always show everything" behavior,
-    # which suits a sequence that grows roughly as fast horizontally as
+    # Fixed-*shape* auto-fit viewport instead of always fitting the whole
+    # line at whatever aspect ratio the content dictates. None (default)
+    # keeps the original "always show everything, any shape" behavior, which
+    # suits a sequence that grows roughly as fast horizontally as
     # vertically. Set both viewport_width and viewport_height for a sequence
-    # (e.g. Recaman's) that can range far wider than it's tall, where fitting
-    # the entire thing into one view would need an absurdly wide window - a
-    # fixed-size, pannable window works better there. Both are fixed (not
-    # derived from arc sizes) so the window always uses the full figure
-    # width; an arc taller than viewport_height simply clips at the top/
-    # bottom edge (zoom out with Down to see more of it) instead of shrinking
-    # the whole view down to accommodate it.
+    # (e.g. Recaman's) that can range far wider than it's tall, where a
+    # square/content-shaped view would squeeze the figure's width down to
+    # match - here the shape (ratio of these two) is fixed to always use the
+    # full figure width, and ArcRenderer._auto_fit_scale() scales that shape
+    # up (both dimensions together, to keep circles circular) just enough to
+    # fit every step so far, so it reads as "zoom out to fit everything"
+    # rather than "clip" or "shrink the box".
     viewport_width: float | None = None
     # Matched to viewport_width for the default figure size/margins (9x4in,
     # top=0.88/bottom=0.14) so the window exactly fills the available width
@@ -65,8 +66,3 @@ class StyleConfig:
     viewport_height: float | None = None
     # Fraction of the (zoomed) viewport width moved per pan key press.
     pan_step_fraction: float = 0.2
-    # Where the viewport is centered before any manual panning. 0.0 (default)
-    # centers on the origin; a sequence that never goes negative (e.g.
-    # Recaman's) can set this to viewport_width / 2 to start at [0, width]
-    # instead of wasting half the window on a side that's never used.
-    initial_pan_center: float = 0.0

@@ -7,7 +7,9 @@ it was given to turn those into a color.
 from __future__ import annotations
 
 import math
+from contextlib import contextmanager
 
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.patches import Arc
 from matplotlib.widgets import Button
@@ -53,23 +55,67 @@ class ArcRenderer:
         # currently typed, and updated whenever a typed number is confirmed
         # with Enter.
         self.step_increment = 1
-        # User zoom relative to the auto-fit view. Reset whenever the step set changes.
+        # Manual zoom on top of the auto-fit baseline. Reset by reset_zoom()
+        # (also triggered by R) and whenever the step set changes.
         self.zoom_scale = 1.0
-        # Viewport center in data units. Only used when style.viewport_width
-        # is set; otherwise the view always spans the whole line and this is
-        # ignored. Starts at style.initial_pan_center and only moves via
-        # explicit pan_by() calls - it does *not* auto-follow the current
-        # position, so the view stays visually stable step to step instead
-        # of jumping around.
-        self.pan_center = self.style.initial_pan_center
+        # True once the view has been manually positioned - via Shift+Left/
+        # Right, or via the matplotlib toolbar's own Pan/Zoom/Home/Back/
+        # Forward tools (detected through _on_external_view_change below) -
+        # so a fixed-width viewport (e.g. recaman) stops auto-tracking a
+        # computed position and instead leaves the view exactly where it
+        # was left. R (reset_zoom) releases this latch again.
+        self._manual_pan = False
+        # Guards ax.set_xlim/ylim calls we make ourselves (redraw, zoom_at,
+        # pan_by, apply_view_limits) so the xlim_changed callback below can
+        # tell those apart from an *external* change (toolbar pan/zoom/home)
+        # and only treat the latter as taking manual control of the view.
+        self._suspend_view_tracking_depth = 0
+
+        self._disable_default_keymaps()
 
         # Leave room at the top for the Colors button (macosx toolbar cannot host custom icons).
         self.fig, self.ax = plt.subplots(figsize=(9, 4))
         self.fig.subplots_adjust(top=0.88, bottom=0.14)
         self.fig.canvas.manager.set_window_title("Number Line Arcs")
         self.ax.set_aspect("equal", adjustable="box")
+        self.ax.callbacks.connect("xlim_changed", self._on_external_view_change)
         self._install_save_filename()
         self._install_colors_button()
+
+    @contextmanager
+    def _suspend_view_change_tracking(self):
+        """Wrap our own view-limit changes so they don't look external."""
+        self._suspend_view_tracking_depth += 1
+        try:
+            yield
+        finally:
+            self._suspend_view_tracking_depth -= 1
+
+    def _on_external_view_change(self, _ax) -> None:
+        """Fires on *any* xlim change, including the toolbar's own Pan, Zoom,
+        Home, and Back/Forward tools - not just our own code (see
+        _suspend_view_change_tracking). Only meaningful for a fixed-width
+        viewport (e.g. recaman); the default variant has no manual-pan
+        concept and keeps always auto-fitting around the origin."""
+        if self._suspend_view_tracking_depth > 0:
+            return
+        if self.style.viewport_width is not None:
+            self._manual_pan = True
+
+    @staticmethod
+    def _disable_default_keymaps() -> None:
+        """Clear matplotlib's default key bindings so only our on_key handler runs.
+
+        By default matplotlib binds e.g. 'left'/'right' to its own Back/Forward
+        view-history navigation and 'r'/'h' to Home (reset view) - all keys we
+        reuse for our own pan/zoom/undo. Both handlers fire on the same press,
+        so matplotlib's navigation was silently fighting our tracked zoom/pan
+        state (e.g. a manual zoom snapping back to a stale toolbar Home/Back
+        view). Clearing every keymap.* default avoids the collision entirely.
+        """
+        for name in list(mpl.rcParams):
+            if name.startswith("keymap."):
+                mpl.rcParams[name] = []
 
     def _install_save_filename(self) -> None:
         """Toolbar Save suggests Number_Line_Arcs-<last_step>.png."""
@@ -85,55 +131,71 @@ class ArcRenderer:
         typed = f"  |  typed: {self.input_buffer}" if self.input_buffer else ""
         speed_pct = (self.style.zoom_factor - 1) * 100
         zoom = f"  |  zoom speed: {speed_pct:+.1f}%/press (scale={self.effective_zoom_scale():.3g})"
-        pan = f"  |  view center: {self.pan_center:.3g}" if self.style.viewport_width is not None else ""
-        return f"Step {step}   Position {pos}   |  increment: {self.step_increment}{typed}{zoom}{pan}"
+        return f"Step {step}   Position {pos}   |  increment: {self.step_increment}{typed}{zoom}"
 
     def _auto_fit_scale(self) -> float:
-        """Minimum zoom_scale (>= 1) needed to fit every arc so far without clipping.
+        """Minimum scale (>= 1) needed to fit every step so far without clipping.
 
-        Only meaningful for a fixed-size viewport: viewport_height is a
-        constant, but the tallest arc in the run only grows, so scaling the
-        whole (width and height together, to keep circles circular) window
-        out just enough keeps everything visible without ever shrinking the
-        box away from the full window width. A no-op (1.0) for the
-        auto-fit-everything default variant, which already never clips.
+        Only meaningful for a fixed-shape viewport: viewport_width/height
+        describe a constant *shape* (matching the figure, so it always uses
+        the full window), but the sequence's horizontal spread and the
+        tallest arc's radius only grow, so scaling that shape up (width and
+        height together, to keep circles circular) just enough keeps
+        everything visible without ever needing to shrink the box away from
+        the full window width. A no-op (1.0) for the auto-fit-everything
+        default variant, which already never clips.
         """
         style = self.style
+        sim = self.simulation
         if style.viewport_width is None or style.viewport_height is None:
             return 1.0
-        max_radius = self.simulation.max_radius()
-        if max_radius <= 0:
-            return 1.0
-        needed_height = 2 * max_radius * (1 + style.padding_fraction)
-        return max(1.0, needed_height / style.viewport_height)
+        line_min, line_max = sim.position_range()
+        width_needed = (line_max - line_min) * (1 + style.padding_fraction)
+        height_needed = 2 * sim.max_radius() * (1 + style.padding_fraction)
+        scale_w = width_needed / style.viewport_width
+        scale_h = height_needed / style.viewport_height
+        return max(1.0, scale_w, scale_h)
 
     def effective_zoom_scale(self) -> float:
         """The zoom_scale actually applied: manual zoom on top of the auto-fit baseline."""
         return self.zoom_scale * self._auto_fit_scale()
 
-    def default_limits(self) -> tuple[tuple[float, float], tuple[float, float]]:
-        """Baseline limits before the effective zoom scale is applied.
+    def _auto_pan_center(self) -> float:
+        """Where the viewport should be centered when the user hasn't manually panned.
+
+        Left-aligned on the leftmost visited position (0 for a sequence that
+        never goes negative, e.g. Recaman's) rather than centered on the
+        content's midpoint, so any extra room from auto-fit's scale-up goes
+        to the right - where the sequence actually grows - instead of being
+        wasted symmetrically on a side nothing ever visits.
+        """
+        line_min, _ = self.simulation.position_range()
+        half_w = self.style.viewport_width / 2 * self._auto_fit_scale()
+        return line_min + half_w
+
+    def default_limits(self, *, manual_center_x: float | None = None) -> tuple[tuple[float, float], tuple[float, float]]:
+        """The auto-fit baseline view (scale and center included).
 
         Normally this auto-fits the whole line and every arc, so the height
         comes from the tallest arc anywhere in the run. If
         style.viewport_width/viewport_height are set, this instead returns
-        a fixed-size window centered on self.pan_center (the whole line may
-        be far too wide to show at once, e.g. Recaman's sequence) - fixed,
-        rather than sized from arc radii, so the window's *shape* always
-        matches the figure and uses the full width. Content taller than
-        viewport_height doesn't clip though: effective_zoom_scale() scales
-        this fixed-shape window up (both dimensions together, to keep
-        circles circular) just enough to fit every arc so far, so it reads
-        as "zoom out to fit everything" rather than "shrink the box".
+        a window with a fixed *shape* (matching the figure, so it always
+        uses the full width) scaled up by _auto_fit_scale().         Centered by _auto_pan_center() unless self._manual_pan is set and
+        the caller passed the view's actual current center
+        (manual_center_x) - see redraw(), which reads that from the axes
+        directly rather than a separately tracked variable, so it stays in
+        sync with pans made via the toolbar too.
         """
         style = self.style
         sim = self.simulation
 
         if style.viewport_width is not None:
-            half_w = style.viewport_width / 2
+            auto_scale = self._auto_fit_scale()
+            half_w = style.viewport_width / 2 * auto_scale
             half_h = (style.viewport_height if style.viewport_height is not None else style.viewport_width) / 2
-            x0, x1 = self.pan_center - half_w, self.pan_center + half_w
-            return (x0, x1), (-half_h, half_h)
+            half_h *= auto_scale
+            center = manual_center_x if (self._manual_pan and manual_center_x is not None) else self._auto_pan_center()
+            return (center - half_w, center + half_w), (-half_h, half_h)
 
         line_min, line_max = sim.bounds()
         x_pad = (line_max - line_min) * style.padding_fraction
@@ -142,10 +204,10 @@ class ArcRenderer:
         y_pad = y_extent * style.padding_fraction
         return (line_min - x_pad, line_max + x_pad), (-(y_extent + y_pad), y_extent + y_pad)
 
-    def apply_view_limits(self) -> None:
-        """Apply the baseline limits scaled by the effective zoom around the configured pivot."""
-        (x0, x1), (y0, y1) = self.default_limits()
-        scale = self.effective_zoom_scale()
+    def apply_view_limits(self, *, manual_center_x: float | None = None) -> None:
+        """Apply the auto-fit baseline scaled by the user's manual zoom, around the configured pivot."""
+        (x0, x1), (y0, y1) = self.default_limits(manual_center_x=manual_center_x)
+        scale = self.zoom_scale
         # Zoom in => smaller window => scale < 1. Pivot stays fixed.
         cx = (x0 + x1) / 2
         cy = (y0 + y1) / 2
@@ -157,17 +219,25 @@ class ArcRenderer:
             cx, cy = 0.0, 0.0
         half_w = (x1 - x0) / 2 * scale
         half_h = (y1 - y0) / 2 * scale
-        self.ax.set_xlim(cx - half_w, cx + half_w)
-        self.ax.set_ylim(cy - half_h, cy + half_h)
-        self.ax.set_aspect("equal", adjustable="box")
+        with self._suspend_view_change_tracking():
+            self.ax.set_xlim(cx - half_w, cx + half_w)
+            self.ax.set_ylim(cy - half_h, cy + half_h)
+            self.ax.set_aspect("equal", adjustable="box")
 
     def pan_by(self, direction: int) -> None:
-        """Slide a fixed-width viewport left (-1) or right (+1). No-op otherwise."""
+        """Slide the *actual current* view left (-1) or right (+1). No-op otherwise.
+
+        Reads/writes ax.get_xlim() directly (not a separately tracked
+        center), so this composes correctly whether the view got to its
+        current position via us or via the toolbar's own Pan/Zoom tools.
+        """
         if self.style.viewport_width is None:
             return
-        step = self.style.viewport_width * self.effective_zoom_scale() * self.style.pan_step_fraction
-        self.pan_center += direction * step
-        self.apply_view_limits()
+        self._manual_pan = True
+        x0, x1 = self.ax.get_xlim()
+        step = (x1 - x0) * self.style.pan_step_fraction
+        with self._suspend_view_change_tracking():
+            self.ax.set_xlim(x0 + direction * step, x1 + direction * step)
         self._refresh_title()
         self.fig.canvas.draw_idle()
 
@@ -175,7 +245,13 @@ class ArcRenderer:
         self.ax.set_title(self.status_line(), fontsize=self.style.status_fontsize)
 
     def zoom_at(self, direction: str, cursor_x: float | None, cursor_y: float | None) -> None:
-        """Zoom in ('up') or out ('down'). Pivot from StyleConfig.zoom_pivot."""
+        """Zoom in ('up') or out ('down'), pivoting on the *actual current* view.
+
+        Always scales ax.get_xlim()/get_ylim() directly rather than
+        recomputing a baseline from tracked state, so this respects
+        wherever the view currently is - including a pan done via the
+        toolbar's own Pan tool, not just our Shift+Left/Right.
+        """
         factor = self.style.zoom_factor
         if direction == "up":
             self.zoom_scale /= factor
@@ -185,26 +261,35 @@ class ArcRenderer:
         # deep zoom at large step counts is where this looks best.
         self.zoom_scale = min(max(self.zoom_scale, self.style.zoom_scale_min), self.style.zoom_scale_max)
 
-        if self.style.zoom_pivot == ZOOM_PIVOT_CURSOR and cursor_x is not None and cursor_y is not None:
-            # Scale current limits around the cursor without recomputing auto-fit.
-            ax = self.ax
-            x0, x1 = ax.get_xlim()
-            y0, y1 = ax.get_ylim()
-            f = 1 / factor if direction == "up" else factor
-            ax.set_xlim(cursor_x + (x0 - cursor_x) * f, cursor_x + (x1 - cursor_x) * f)
-            ax.set_ylim(cursor_y + (y0 - cursor_y) * f, cursor_y + (y1 - cursor_y) * f)
-            # Keep zoom_scale consistent with origin-based path for later redraws.
-            self._refresh_title()
-            self.fig.canvas.draw_idle()
-            return
+        ax = self.ax
+        x0, x1 = ax.get_xlim()
+        y0, y1 = ax.get_ylim()
 
-        self.apply_view_limits()
+        if self.style.viewport_width is None and self.style.zoom_pivot != ZOOM_PIVOT_CURSOR:
+            # Deliberate: the default variant always zooms toward the true
+            # origin (the "moving spiral" effect), regardless of any pan.
+            px, py = 0.0, 0.0
+        elif cursor_x is not None and cursor_y is not None:
+            px, py = cursor_x, cursor_y
+        else:
+            # No cursor (keyboard zoom): pivot on whatever's currently
+            # centered on screen, so it doesn't snap away from a pan.
+            px, py = (x0 + x1) / 2, (y0 + y1) / 2
+
+        f = 1 / factor if direction == "up" else factor
+        with self._suspend_view_change_tracking():
+            ax.set_xlim(px + (x0 - px) * f, px + (x1 - px) * f)
+            ax.set_ylim(py + (y0 - py) * f, py + (y1 - py) * f)
+            ax.set_aspect("equal", adjustable="box")
         self._refresh_title()
         self.fig.canvas.draw_idle()
 
     def reset_zoom(self) -> None:
+        """Reset manual zoom and release the manual-pan latch, back to full auto-fit."""
         self.zoom_scale = 1.0
+        self._manual_pan = False
         self.apply_view_limits()
+        self._refresh_title()
         self.fig.canvas.draw_idle()
 
     def adjust_zoom_factor(self, delta: float) -> None:
@@ -235,17 +320,28 @@ class ArcRenderer:
         ax = self.ax
         style = self.style
         sim = self.simulation
-        ax.clear()
+
+        # Capture the actual displayed center *before* clearing wipes it -
+        # it may reflect a pan we never explicitly tracked (Shift+Left/Right,
+        # or the toolbar's own Pan tool), which we want to keep respecting.
+        manual_center_x = sum(ax.get_xlim()) / 2 if style.viewport_width is not None else None
+
+        with self._suspend_view_change_tracking():
+            ax.clear()
+        # ax.clear() silently drops all registered callbacks, so re-attach
+        # ours every time or external-view-change detection would only ever
+        # work before the very first redraw().
+        ax.callbacks.connect("xlim_changed", self._on_external_view_change)
 
         if not preserve_zoom:
             self.zoom_scale = 1.0
-            # pan_center is deliberately *not* reset here: recentering on the
-            # new position every step made the view visibly jump left/right
-            # each time the sequence moved. The viewport instead stays
-            # wherever it is (initially 0) until the user explicitly pans
-            # with Shift+Left/Right.
+            # _manual_pan is deliberately *not* reset here: once the user has
+            # taken manual control of the view (Shift+Left/Right, or the
+            # toolbar's Pan/Zoom/Home/Back/Forward tools), it should keep
+            # respecting that instead of snapping back to auto-tracking on
+            # every step. Only reset_zoom() (R) releases the latch.
 
-        self.apply_view_limits()
+        self.apply_view_limits(manual_center_x=manual_center_x)
 
         # The number line itself.
         ax.axhline(0, color=style.line_color, linewidth=1.2, zorder=1)

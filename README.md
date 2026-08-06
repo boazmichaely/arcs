@@ -98,9 +98,7 @@ until you type a new number.
 
 `zoom speed` is how much the view size changes per `Up`/`Down`/scroll press,
 shown in the title as a percentage (default `+5.0%/press`, from
-`StyleConfig.zoom_factor = 1.05`). Tune it live with `Shift+Up`/`Shift+Down`
-and watch the title, then tell me what felt right and I'll set it as the
-default in `style.py`.
+`StyleConfig.zoom_factor = 1.05`). Tune it live with `Shift+Up`/`Shift+Down`.
 
 ## Variants
 
@@ -112,18 +110,10 @@ coloring rule (see [Design](#design)):
 | `default` | Odd `n` right, even `n` left | Follows movement direction | Follows arc side |
 | `recaman` | Recamán's sequence: try `pos - n` (if non-negative and unvisited), else `pos + n` | Alternates by step parity (odd above, even below), independent of movement | Follows rotational direction: **clockwise** if arc side agrees with movement direction (above-and-right, or below-and-left), **counter-clockwise** otherwise |
 
-`recaman` also uses a pannable viewport (`Shift+Left`/`Right`, starting at
-`[0, viewport_width]` since the sequence never goes negative) instead of
-always fitting the whole line, since the sequence can range far wider than
-it is tall. The window's *shape* (`StyleConfig.viewport_width` /
-`viewport_height`) always matches the figure, so it never shrinks down to a
-square to accommodate one tall arc; instead, the view auto-zooms out (both
-width and height together, to keep circles circular) just enough to keep
-every arc drawn so far fully visible - "zoom out to fit everything" rather
-than "squeeze the box." Manual `Up`/`Down`/scroll zoom stacks on top of that
-auto-fit baseline and always pivots on your current pan position, never the
-origin; `R` drops the manual zoom and returns to exactly the auto-fit view
-without moving your pan position.
+`recaman` uses a fixed-width, full-figure-width viewport (it can range far
+wider than it is tall) that auto-zooms out to keep every arc so far visible,
+and auto-pans to stay left-aligned at 0 until you pan manually with
+`Shift+Left`/`Right`. `R` returns to that live auto-fit/auto-pan view.
 
 ### Matplotlib toolbar
 
@@ -138,9 +128,9 @@ These buttons affect the **view**, not the step simulation:
 | Configure subplots | `wspace` / `hspace` - spacing between panes in a **multi-plot** grid. This app has one axes, so changing them has no effect. |
 | Save | Save the figure; suggested name is `Number_Line_Arcs-<n>.png` where `n` is the last rendered step |
 
-On the default **macosx** backend, that toolbar is native and fixed by matplotlib - you cannot add custom icons to it without switching to a Qt or Tk backend (which also need those libraries installed). Arc colors therefore live on the figure as a **Colors** button (and the `C` key), not on the toolbar.
-
-Step advance / undo is only via the keyboard controls above.
+Arc colors live on the figure as a **Colors** button (and the `C` key)
+rather than on the toolbar, since the default macosx toolbar can't host
+custom icons. Step advance / undo is keyboard-only.
 
 ### Colors
 
@@ -148,28 +138,13 @@ Press `C` or click **Colors**. On macOS this opens the system color picker (no t
 
 ## Design
 
-A variant is three independent, pluggable policies, all defined in
-`rules.py`, plus any `StyleConfig` overrides it needs:
+A variant (`rules.py`) is three pluggable policies plus `StyleConfig`
+overrides:
 
-- `StepRule` - given step `n`, the current position, and the set of
-  positions visited so far, where do we move to next? (`AlternatingParityRule`,
-  `RecamanRule`)
-- `OrientationRule` - given the move, is the arc drawn above or below the
-  line? (`DirectionOrientation`: follows movement direction; `AlternatingOrientation`:
-  follows step parity)
-- `ColorRule` - given the arc's orientation and actual move direction, which
-  of the two configured colors (`StyleConfig.color_a` / `color_b`) does it
-  use? (`SideColorRule`: by orientation; `ClockwiseColorRule`: by rotational
-  direction)
+- `StepRule` - `(n, position, visited) -> next position`
+- `OrientationRule` - `(n, start, end) -> above/below`
+- `ColorRule` - `(is_above, moved_right) -> color_a/color_b`
 
-`rules.py`'s `VARIANTS` dict bundles a named triple of these plus style
-overrides (e.g. `recaman`'s fixed-width viewport) - `arcs.py --variant`
-just looks up a name in it.
-
-`simulation.py` and `renderer.py` are policy-agnostic: `Simulation` calls
-whatever `StepRule`/`OrientationRule` it was given and stores the results on
-each `Step`; `ArcRenderer` calls whatever `ColorRule` it was given. Neither
-needs to change when adding a new variant.
-
-To add another variant, add the new rule(s) to `rules.py` and a new entry to
-`VARIANTS` - no changes needed in `simulation.py` or `renderer.py`.
+`VARIANTS` bundles a named set of these; `--variant` looks up a name in it.
+`simulation.py` / `renderer.py` are policy-agnostic - adding a variant only
+touches `rules.py`.

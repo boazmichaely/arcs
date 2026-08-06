@@ -86,3 +86,13 @@ class Simulation:
         if not self.steps:
             return 0.0
         return max(step.radius for step in self.steps)
+
+    def position_range(self) -> tuple[int, int]:
+        """The tight [min, max] of every position actually visited (incl. 0).
+
+        Unlike bounds(), this has no symmetric-padding-for-a-grid floor, so
+        a rule that never goes negative (e.g. Recaman's) reports a true
+        min of 0 rather than a permanent -INITIAL_BOUND.
+        """
+        positions = [0] + [step.end for step in self.steps]
+        return min(positions), max(positions)
