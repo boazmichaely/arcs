@@ -84,6 +84,7 @@ Click the plot window to give it focus, then:
 | Mouse wheel | Same zoom as `Up` / `Down` |
 | `Shift+Down` / `Shift+Up` | Decrease / increase zoom speed, live |
 | `Shift+Left` / `Shift+Right` | Pan the viewport left / right (only variants with a fixed-width viewport, e.g. `recaman`) |
+| `R` | Reset zoom to auto-fit (keeps your current pan position) |
 | `C` or the **Colors** button | Choose the two arc colors |
 | `Q` / `Escape` | Quit |
 
@@ -111,14 +112,18 @@ coloring rule (see [Design](#design)):
 | `default` | Odd `n` right, even `n` left | Follows movement direction | Follows arc side |
 | `recaman` | Recamán's sequence: try `pos - n` (if non-negative and unvisited), else `pos + n` | Alternates by step parity (odd above, even below), independent of movement | Follows rotational direction: **clockwise** if arc side agrees with movement direction (above-and-right, or below-and-left), **counter-clockwise** otherwise |
 
-`recaman` also uses a fixed-size, pannable viewport (`Shift+Left`/`Right`,
-starting at `[0, viewport_width]` since the sequence never goes negative)
-instead of always fitting the whole line, since the sequence can range far
-wider than it is tall. The window size (`StyleConfig.viewport_width` /
-`viewport_height`) is fixed rather than sized to fit every arc, so it always
-uses the full window instead of shrinking down to accommodate one tall arc;
-an arc taller than `viewport_height` just clips at the top/bottom edge -
-zoom out (`Down`) to see more of it.
+`recaman` also uses a pannable viewport (`Shift+Left`/`Right`, starting at
+`[0, viewport_width]` since the sequence never goes negative) instead of
+always fitting the whole line, since the sequence can range far wider than
+it is tall. The window's *shape* (`StyleConfig.viewport_width` /
+`viewport_height`) always matches the figure, so it never shrinks down to a
+square to accommodate one tall arc; instead, the view auto-zooms out (both
+width and height together, to keep circles circular) just enough to keep
+every arc drawn so far fully visible - "zoom out to fit everything" rather
+than "squeeze the box." Manual `Up`/`Down`/scroll zoom stacks on top of that
+auto-fit baseline and always pivots on your current pan position, never the
+origin; `R` drops the manual zoom and returns to exactly the auto-fit view
+without moving your pan position.
 
 ### Matplotlib toolbar
 

@@ -106,6 +106,10 @@ def main(argv: list[str] | None = None) -> None:
             renderer.open_color_settings()
             return
 
+        if key in ("r", "R"):
+            renderer.reset_zoom()
+            return
+
         if key == "up":
             renderer.zoom_at("up", None, None)
             return

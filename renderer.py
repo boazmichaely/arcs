@@ -21,7 +21,7 @@ CONTROLS_TEXT = (
     "Right / Space / Enter: advance   |   digits + Enter: set increment & advance   |   "
     "Backspace: edit typed count   |   Left: undo   |   Up / Down / Scroll: zoom   |   "
     "Shift+Up/Down: zoom speed   |   Shift+Left/Right: pan (viewport only)   |   "
-    "Colors / C: arc colors   |   Q / Esc: quit"
+    "R: reset zoom to auto-fit   |   Colors / C: arc colors   |   Q / Esc: quit"
 )
 
 
@@ -84,21 +84,47 @@ class ArcRenderer:
         step = self.simulation.current_step
         typed = f"  |  typed: {self.input_buffer}" if self.input_buffer else ""
         speed_pct = (self.style.zoom_factor - 1) * 100
-        zoom = f"  |  zoom speed: {speed_pct:+.1f}%/press (scale={self.zoom_scale:.3g})"
+        zoom = f"  |  zoom speed: {speed_pct:+.1f}%/press (scale={self.effective_zoom_scale():.3g})"
         pan = f"  |  view center: {self.pan_center:.3g}" if self.style.viewport_width is not None else ""
         return f"Step {step}   Position {pos}   |  increment: {self.step_increment}{typed}{zoom}{pan}"
 
+    def _auto_fit_scale(self) -> float:
+        """Minimum zoom_scale (>= 1) needed to fit every arc so far without clipping.
+
+        Only meaningful for a fixed-size viewport: viewport_height is a
+        constant, but the tallest arc in the run only grows, so scaling the
+        whole (width and height together, to keep circles circular) window
+        out just enough keeps everything visible without ever shrinking the
+        box away from the full window width. A no-op (1.0) for the
+        auto-fit-everything default variant, which already never clips.
+        """
+        style = self.style
+        if style.viewport_width is None or style.viewport_height is None:
+            return 1.0
+        max_radius = self.simulation.max_radius()
+        if max_radius <= 0:
+            return 1.0
+        needed_height = 2 * max_radius * (1 + style.padding_fraction)
+        return max(1.0, needed_height / style.viewport_height)
+
+    def effective_zoom_scale(self) -> float:
+        """The zoom_scale actually applied: manual zoom on top of the auto-fit baseline."""
+        return self.zoom_scale * self._auto_fit_scale()
+
     def default_limits(self) -> tuple[tuple[float, float], tuple[float, float]]:
-        """Baseline limits before zoom_scale is applied.
+        """Baseline limits before the effective zoom scale is applied.
 
         Normally this auto-fits the whole line and every arc, so the height
         comes from the tallest arc anywhere in the run. If
-        style.viewport_width/viewport_height are set, the window is a fixed
-        size centered on self.pan_center instead (the whole line may be far
-        too wide to show at once, e.g. Recaman's sequence) - fixed, rather
-        than sized from arc radii, so the window always uses the full figure
-        width regardless of content; an arc taller than viewport_height just
-        clips at the edge instead of squeezing the whole view down to fit it.
+        style.viewport_width/viewport_height are set, this instead returns
+        a fixed-size window centered on self.pan_center (the whole line may
+        be far too wide to show at once, e.g. Recaman's sequence) - fixed,
+        rather than sized from arc radii, so the window's *shape* always
+        matches the figure and uses the full width. Content taller than
+        viewport_height doesn't clip though: effective_zoom_scale() scales
+        this fixed-shape window up (both dimensions together, to keep
+        circles circular) just enough to fit every arc so far, so it reads
+        as "zoom out to fit everything" rather than "shrink the box".
         """
         style = self.style
         sim = self.simulation
@@ -117,9 +143,9 @@ class ArcRenderer:
         return (line_min - x_pad, line_max + x_pad), (-(y_extent + y_pad), y_extent + y_pad)
 
     def apply_view_limits(self) -> None:
-        """Apply the baseline limits scaled by zoom_scale around the configured pivot."""
+        """Apply the baseline limits scaled by the effective zoom around the configured pivot."""
         (x0, x1), (y0, y1) = self.default_limits()
-        scale = self.zoom_scale
+        scale = self.effective_zoom_scale()
         # Zoom in => smaller window => scale < 1. Pivot stays fixed.
         cx = (x0 + x1) / 2
         cy = (y0 + y1) / 2
@@ -139,7 +165,7 @@ class ArcRenderer:
         """Slide a fixed-width viewport left (-1) or right (+1). No-op otherwise."""
         if self.style.viewport_width is None:
             return
-        step = self.style.viewport_width * self.zoom_scale * self.style.pan_step_fraction
+        step = self.style.viewport_width * self.effective_zoom_scale() * self.style.pan_step_fraction
         self.pan_center += direction * step
         self.apply_view_limits()
         self._refresh_title()
