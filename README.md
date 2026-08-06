@@ -65,6 +65,7 @@ python arcs.py 25                 # pre-run 25 steps, show the result, then stay
 python arcs.py --max-label-step 20
 python arcs.py --color-a blue --color-b red
 python arcs.py 30 --variant recaman
+python arcs.py 30 --variant recaman --no-smallest-missing
 ```
 
 (On Windows use `python` the same way, once the venv above is activated.)
@@ -85,7 +86,7 @@ Click the plot window to give it focus, then:
 | `Shift+Down` / `Shift+Up` | Decrease / increase zoom speed, live |
 | `Shift+Left` / `Shift+Right` | Pan the viewport left / right (only variants with a fixed-width viewport, e.g. `recaman`) |
 | `R` | Reset zoom to auto-fit (keeps your current pan position) |
-| `C` or the **Colors** button | Choose the two arc colors |
+| `C` | Choose the two arc colors |
 | `Q` / `Escape` | Quit |
 
 The remembered increment is shown in the plot title. Typing a number and
@@ -115,7 +116,8 @@ wider than it is tall) that auto-zooms out to keep every arc so far visible,
 and auto-pans to stay left-aligned at 0 until you pan manually (`Shift+Left`/
 `Right`, or the toolbar's own Pan/Zoom tools). `R` returns to that live
 auto-fit/auto-pan view. The status line also shows the smallest
-non-negative integer not yet reached.
+non-negative integer not yet reached - toggle with `--smallest-missing` /
+`--no-smallest-missing` (default: on).
 
 ### Matplotlib toolbar
 
@@ -130,13 +132,11 @@ These buttons affect the **view**, not the step simulation:
 | Configure subplots | `wspace` / `hspace` - spacing between panes in a **multi-plot** grid. This app has one axes, so changing them has no effect. |
 | Save | Save the figure; suggested name is `Number_Line_Arcs-<n>.png` where `n` is the last rendered step |
 
-Arc colors live on the figure as a **Colors** button (and the `C` key)
-rather than on the toolbar, since the default macosx toolbar can't host
-custom icons. Step advance / undo is keyboard-only.
+Step advance / undo is keyboard-only.
 
 ### Colors
 
-Press `C` or click **Colors**. On macOS this opens the system color picker (no tkinter required). If that is unavailable, a small swatch window is used instead.
+Press `C`. On macOS this opens the system color picker (no tkinter required). If that is unavailable, a small swatch window is used instead.
 
 ## Design
 

@@ -8,9 +8,10 @@ other bundled sequence):
       n even -> move left n steps, draw the arc below the line.
 
 Usage:
-    python arcs.py                    # start interactive, at step 0
-    python arcs.py 25                 # pre-run 25 steps, show the result, then stay interactive
-    python arcs.py --variant recaman  # render Recaman's sequence instead
+    python arcs.py                          # start interactive, at step 0
+    python arcs.py 25                       # pre-run 25 steps, show the result, then stay interactive
+    python arcs.py --variant recaman        # render Recaman's sequence instead
+    python arcs.py --variant recaman --no-smallest-missing
 
 Controls (once the plot window has focus):
     Right / Space / Enter (no digits typed)  -> advance by the remembered increment (starts at 1)
@@ -25,7 +26,7 @@ Controls (once the plot window has focus):
     Shift + Down / Shift + Up                  -> decrease / increase zoom speed
     Shift + Left / Shift + Right               -> pan the viewport (only variants with a
                                                    fixed-width viewport, e.g. recaman)
-    C  (or the Colors button on the figure)    -> choose the two arc colors
+    C                                          -> choose the two arc colors
     Q / Escape                                 -> quit
 
 The plot title always shows the live zoom speed and zoom scale alongside the
@@ -74,6 +75,13 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         default=None,
         help="Initial color for group-B arcs (default: black).",
     )
+    parser.add_argument(
+        "--smallest-missing",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Show the smallest not-yet-visited number in the status line "
+        "(default: on for variants that track it, e.g. recaman).",
+    )
     return parser.parse_args(argv)
 
 
@@ -88,6 +96,8 @@ def main(argv: list[str] | None = None) -> None:
         style.color_a = args.color_a
     if args.color_b:
         style.color_b = args.color_b
+    if args.smallest_missing is not None:
+        style.show_smallest_missing = args.smallest_missing
 
     sim = Simulation(rule=variant["rule"], orientation=variant["orientation"])
     if args.n:

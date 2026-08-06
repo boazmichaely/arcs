@@ -12,7 +12,6 @@ from contextlib import contextmanager
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.patches import Arc
-from matplotlib.widgets import Button
 
 from colors import ask_two_colors
 from rules import ColorRule, DEFAULT_COLOR_RULE
@@ -23,7 +22,7 @@ CONTROLS_TEXT = (
     "Right / Space / Enter: advance   |   digits + Enter: set increment & advance   |   "
     "Backspace: edit typed count   |   Left: undo   |   Up / Down / Scroll: zoom   |   "
     "Shift+Up/Down: zoom speed   |   Shift+Left/Right: pan (viewport only)   |   "
-    "R: reset zoom to auto-fit   |   Colors / C: arc colors   |   Q / Esc: quit"
+    "R: reset zoom to auto-fit   |   C: arc colors   |   Q / Esc: quit"
 )
 
 
@@ -73,14 +72,12 @@ class ArcRenderer:
 
         self._disable_default_keymaps()
 
-        # Leave room at the top for the Colors button (macosx toolbar cannot host custom icons).
         self.fig, self.ax = plt.subplots(figsize=(9, 4))
         self.fig.subplots_adjust(top=0.88, bottom=0.14)
         self.fig.canvas.manager.set_window_title("Number Line Arcs")
         self.ax.set_aspect("equal", adjustable="box")
         self.ax.callbacks.connect("xlim_changed", self._on_external_view_change)
         self._install_save_filename()
-        self._install_colors_button()
 
     @contextmanager
     def _suspend_view_change_tracking(self):
@@ -297,17 +294,6 @@ class ArcRenderer:
         self.style.zoom_factor = max(1.001, self.style.zoom_factor + delta)
         self._refresh_title()
         self.fig.canvas.draw_idle()
-
-    def _install_colors_button(self) -> None:
-        """On-figure Colors control.
-
-        The native macosx matplotlib toolbar is fixed by the backend (Home, Pan,
-        Zoom, Save, …) and does not accept custom icons without switching to a
-        Qt/Tk backend. A figure button is the portable stand-in.
-        """
-        btn_ax = self.fig.add_axes([0.86, 0.92, 0.12, 0.055])
-        self._colors_button = Button(btn_ax, "Colors")
-        self._colors_button.on_clicked(lambda _evt: self.open_color_settings())
 
     def open_color_settings(self) -> None:
         """Prompt for the two arc colors and redraw."""
