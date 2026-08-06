@@ -148,6 +148,8 @@ VARIANTS: dict[str, dict] = {
         "color_rule": ClockwiseColorRule(),
         "style": {
             "viewport_width": 40.0,
+            "viewport_height": 16.9,  # fills the full figure width for the default figsize/margins
+            "initial_pan_center": 20.0,  # start at [0, 40] - the sequence never goes negative
             "color_a_label": "Clockwise-arc",
             "color_b_label": "Counter-clockwise-arc",
         },

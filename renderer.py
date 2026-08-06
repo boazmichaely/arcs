@@ -57,10 +57,11 @@ class ArcRenderer:
         self.zoom_scale = 1.0
         # Viewport center in data units. Only used when style.viewport_width
         # is set; otherwise the view always spans the whole line and this is
-        # ignored. Starts at 0 and only moves via explicit pan_by() calls -
-        # it does *not* auto-follow the current position, so the view stays
-        # visually stable step to step instead of jumping around.
-        self.pan_center = 0.0
+        # ignored. Starts at style.initial_pan_center and only moves via
+        # explicit pan_by() calls - it does *not* auto-follow the current
+        # position, so the view stays visually stable step to step instead
+        # of jumping around.
+        self.pan_center = self.style.initial_pan_center
 
         # Leave room at the top for the Colors button (macosx toolbar cannot host custom icons).
         self.fig, self.ax = plt.subplots(figsize=(9, 4))
@@ -90,25 +91,30 @@ class ArcRenderer:
     def default_limits(self) -> tuple[tuple[float, float], tuple[float, float]]:
         """Baseline limits before zoom_scale is applied.
 
-        Normally this auto-fits the whole line and every arc. If
-        style.viewport_width is set, it instead returns a fixed-width window
-        centered on self.pan_center, since the whole line may be far too
-        wide to show at once (e.g. Recaman's sequence).
+        Normally this auto-fits the whole line and every arc, so the height
+        comes from the tallest arc anywhere in the run. If
+        style.viewport_width/viewport_height are set, the window is a fixed
+        size centered on self.pan_center instead (the whole line may be far
+        too wide to show at once, e.g. Recaman's sequence) - fixed, rather
+        than sized from arc radii, so the window always uses the full figure
+        width regardless of content; an arc taller than viewport_height just
+        clips at the edge instead of squeezing the whole view down to fit it.
         """
         style = self.style
         sim = self.simulation
-        max_radius = sim.max_radius()
-        y_extent = max(max_radius, 1.0)
-        y_pad = y_extent * style.padding_fraction
-        y_limits = (-(y_extent + y_pad), y_extent + y_pad)
 
         if style.viewport_width is not None:
             half_w = style.viewport_width / 2
-            return (self.pan_center - half_w, self.pan_center + half_w), y_limits
+            half_h = (style.viewport_height if style.viewport_height is not None else style.viewport_width) / 2
+            x0, x1 = self.pan_center - half_w, self.pan_center + half_w
+            return (x0, x1), (-half_h, half_h)
 
         line_min, line_max = sim.bounds()
         x_pad = (line_max - line_min) * style.padding_fraction
-        return (line_min - x_pad, line_max + x_pad), y_limits
+        max_radius = sim.max_radius()
+        y_extent = max(max_radius, 1.0)
+        y_pad = y_extent * style.padding_fraction
+        return (line_min - x_pad, line_max + x_pad), (-(y_extent + y_pad), y_extent + y_pad)
 
     def apply_view_limits(self) -> None:
         """Apply the baseline limits scaled by zoom_scale around the configured pivot."""

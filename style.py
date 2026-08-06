@@ -47,13 +47,26 @@ class StyleConfig:
     zoom_scale_min: float = 1e-9
     zoom_scale_max: float = 1e9
 
-    # Fixed-width sliding viewport instead of always fitting the whole line.
+    # Fixed-size sliding viewport instead of always fitting the whole line.
     # None (default) keeps the original "always show everything" behavior,
     # which suits a sequence that grows roughly as fast horizontally as
-    # vertically. Set to a number of data units for a sequence (e.g.
-    # Recaman's) that can range far wider than it's tall, where fitting the
-    # entire thing into one view would need an absurdly wide window - a
-    # fixed-width, pannable window works better there.
+    # vertically. Set both viewport_width and viewport_height for a sequence
+    # (e.g. Recaman's) that can range far wider than it's tall, where fitting
+    # the entire thing into one view would need an absurdly wide window - a
+    # fixed-size, pannable window works better there. Both are fixed (not
+    # derived from arc sizes) so the window always uses the full figure
+    # width; an arc taller than viewport_height simply clips at the top/
+    # bottom edge (zoom out with Down to see more of it) instead of shrinking
+    # the whole view down to accommodate it.
     viewport_width: float | None = None
+    # Matched to viewport_width for the default figure size/margins (9x4in,
+    # top=0.88/bottom=0.14) so the window exactly fills the available width
+    # with no wasted margin. Retune if figsize or those margins change.
+    viewport_height: float | None = None
     # Fraction of the (zoomed) viewport width moved per pan key press.
     pan_step_fraction: float = 0.2
+    # Where the viewport is centered before any manual panning. 0.0 (default)
+    # centers on the origin; a sequence that never goes negative (e.g.
+    # Recaman's) can set this to viewport_width / 2 to start at [0, width]
+    # instead of wasting half the window on a side that's never used.
+    initial_pan_center: float = 0.0

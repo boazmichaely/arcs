@@ -111,9 +111,14 @@ coloring rule (see [Design](#design)):
 | `default` | Odd `n` right, even `n` left | Follows movement direction | Follows arc side |
 | `recaman` | Recamán's sequence: try `pos - n` (if non-negative and unvisited), else `pos + n` | Alternates by step parity (odd above, even below), independent of movement | Follows rotational direction: **clockwise** if arc side agrees with movement direction (above-and-right, or below-and-left), **counter-clockwise** otherwise |
 
-`recaman` also uses a fixed-width, pannable viewport (`Shift+Left`/`Right`)
+`recaman` also uses a fixed-size, pannable viewport (`Shift+Left`/`Right`,
+starting at `[0, viewport_width]` since the sequence never goes negative)
 instead of always fitting the whole line, since the sequence can range far
-wider than it is tall.
+wider than it is tall. The window size (`StyleConfig.viewport_width` /
+`viewport_height`) is fixed rather than sized to fit every arc, so it always
+uses the full window instead of shrinking down to accommodate one tall arc;
+an arc taller than `viewport_height` just clips at the top/bottom edge -
+zoom out (`Down`) to see more of it.
 
 ### Matplotlib toolbar
 
