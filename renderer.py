@@ -57,8 +57,9 @@ class ArcRenderer:
         self.zoom_scale = 1.0
         # Viewport center in data units. Only used when style.viewport_width
         # is set; otherwise the view always spans the whole line and this is
-        # ignored. Reset to follow the current position whenever the step
-        # set changes (same "reset unless preserved" rule as zoom_scale).
+        # ignored. Starts at 0 and only moves via explicit pan_by() calls -
+        # it does *not* auto-follow the current position, so the view stays
+        # visually stable step to step instead of jumping around.
         self.pan_center = 0.0
 
         # Leave room at the top for the Colors button (macosx toolbar cannot host custom icons).
@@ -206,8 +207,11 @@ class ArcRenderer:
 
         if not preserve_zoom:
             self.zoom_scale = 1.0
-            if style.viewport_width is not None:
-                self.pan_center = float(sim.current_position)
+            # pan_center is deliberately *not* reset here: recentering on the
+            # new position every step made the view visibly jump left/right
+            # each time the sequence moved. The viewport instead stays
+            # wherever it is (initially 0) until the user explicitly pans
+            # with Shift+Left/Right.
 
         self.apply_view_limits()
 

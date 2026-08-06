@@ -12,10 +12,9 @@ ZOOM_PIVOT_CURSOR = "cursor"
 class StyleConfig:
     # Two generic arc colors. Which arcs get which is decided by the active
     # ColorRule (rules.py) - e.g. by which side the arc is drawn on, or by
-    # its rotational direction. Both default to the same color; change
-    # independently to tell the two groups apart.
-    color_a: str = "black"
-    color_b: str = "black"
+    # its rotational direction.
+    color_a: str = "blue"
+    color_b: str = "red"
     # Labels used only for the color-picker dialog title, so it's obvious
     # which group is being picked for the active variant.
     color_a_label: str = "Above-arc"
