@@ -34,6 +34,11 @@ class StyleConfig:
     # Undo back under the limit and labels reappear. Set very high to always label.
     max_step_to_render_arc_size: int = 10
 
+    # Show "smallest missing: N" in the status line - only meaningful for a
+    # rule that can skip numbers (e.g. Recaman's); the default rule visits
+    # every integer along the way so it isn't shown there.
+    show_smallest_missing: bool = False
+
     # Mouse-wheel / Up-Down zoom. Pivot is code-configurable only for now.
     zoom_pivot: str = ZOOM_PIVOT_ORIGIN  # or ZOOM_PIVOT_CURSOR
 

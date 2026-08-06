@@ -112,8 +112,10 @@ coloring rule (see [Design](#design)):
 
 `recaman` uses a fixed-width, full-figure-width viewport (it can range far
 wider than it is tall) that auto-zooms out to keep every arc so far visible,
-and auto-pans to stay left-aligned at 0 until you pan manually with
-`Shift+Left`/`Right`. `R` returns to that live auto-fit/auto-pan view.
+and auto-pans to stay left-aligned at 0 until you pan manually (`Shift+Left`/
+`Right`, or the toolbar's own Pan/Zoom tools). `R` returns to that live
+auto-fit/auto-pan view. The status line also shows the smallest
+non-negative integer not yet reached.
 
 ### Matplotlib toolbar
 

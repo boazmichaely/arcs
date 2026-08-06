@@ -131,7 +131,8 @@ class ArcRenderer:
         typed = f"  |  typed: {self.input_buffer}" if self.input_buffer else ""
         speed_pct = (self.style.zoom_factor - 1) * 100
         zoom = f"  |  zoom speed: {speed_pct:+.1f}%/press (scale={self.effective_zoom_scale():.3g})"
-        return f"Step {step}   Position {pos}   |  increment: {self.step_increment}{typed}{zoom}"
+        missing = f"  |  smallest missing: {self.simulation.smallest_missing()}" if self.style.show_smallest_missing else ""
+        return f"Step {step}   Position {pos}   |  increment: {self.step_increment}{typed}{zoom}{missing}"
 
     def _auto_fit_scale(self) -> float:
         """Minimum scale (>= 1) needed to fit every step so far without clipping.

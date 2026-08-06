@@ -41,6 +41,13 @@ class Simulation:
         self.orientation = orientation
         self.steps: list[Step] = []
         self._visited: set[int] = {0}
+        # Smallest non-negative integer not in _visited (the sequence's
+        # "mex"). Advanced incrementally rather than rescanned from 0 on
+        # every query: amortized O(1) per advance() (each integer is only
+        # ever climbed past once, no matter how many steps follow), and
+        # O(1) for smallest_missing() itself.
+        self._mex_cursor = 0
+        self._advance_mex_cursor()
 
     @property
     def current_position(self) -> int:
@@ -58,6 +65,8 @@ class Simulation:
             is_above = self.orientation.is_above(n, pos, new_pos)
             self.steps.append(Step(n=n, start=pos, end=new_pos, is_above=is_above))
             self._visited.add(new_pos)
+            if new_pos == self._mex_cursor:
+                self._advance_mex_cursor()
 
     def undo(self, count: int = 1) -> None:
         count = min(count, len(self.steps))
@@ -67,6 +76,18 @@ class Simulation:
             # (positions can, in general, be revisited by later rules).
             if not any(s.end == removed.end for s in self.steps) and removed.end != 0:
                 self._visited.discard(removed.end)
+                self._mex_cursor = min(self._mex_cursor, removed.end)
+        # Re-climb once at the end rather than after each removal - cheap,
+        # since it's bounded by the (now smaller) final cursor value.
+        self._advance_mex_cursor()
+
+    def _advance_mex_cursor(self) -> None:
+        while self._mex_cursor in self._visited:
+            self._mex_cursor += 1
+
+    def smallest_missing(self) -> int:
+        """The smallest non-negative integer not yet visited. O(1)."""
+        return self._mex_cursor
 
     def bounds(self) -> tuple[int, int]:
         """The current [line_min, line_max].

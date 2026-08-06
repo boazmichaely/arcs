@@ -151,6 +151,7 @@ VARIANTS: dict[str, dict] = {
             "viewport_height": 16.9,  # fills the full figure width for the default figsize/margins
             "color_a_label": "Clockwise-arc",
             "color_b_label": "Counter-clockwise-arc",
+            "show_smallest_missing": True,
         },
     },
 }
