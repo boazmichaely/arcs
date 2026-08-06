@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>arcs - browser demo</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 1.5rem; max-width: 900px; }
+  #status { color: #555; }
+  #mpl-target { margin-top: 1rem; }
+  #mpl-target canvas { border: 1px solid #ccc; }
+  code { background: #f2f2f2; padding: 0.1rem 0.3rem; border-radius: 3px; }
+</style>
+</head>
+<body>
+  <h1>arcs</h1>
+  <p>
+    Browser build of the <code>spiral</code> variant (see the
+    <a href="https://github.com/boazmichaely/arcs">repo</a> for the full desktop
+    version, other variants, and CLI options). Click the plot once loaded, then
+    use <code>Right</code>/<code>Left</code>/<code>Up</code>/<code>Down</code>,
+    digits + <code>Enter</code>, or the mouse wheel.
+  </p>
+  <p id="status">Loading Pyodide and matplotlib&hellip; (first load can take ~10-20s)</p>
+  <div id="mpl-target"></div>
+
+  <script src="https://cdn.jsdelivr.net/pyodide/v314.0.4/full/pyodide.js"></script>
+  <script type="text/javascript">
+    const RAW_BASE = "https://raw.githubusercontent.com/boazmichaely/arcs/main/";
+    const SOURCE_FILES = ["style.py", "colors.py", "rules.py", "simulation.py", "renderer.py", "arcs.py"];
+    const statusEl = document.getElementById("status");
+
+    async function main() {
+      document.pyodideMplTarget = document.getElementById("mpl-target");
+
+      const pyodide = await loadPyodide();
+      await pyodide.loadPackage("micropip");
+      const micropip = pyodide.pyimport("micropip");
+      await micropip.install(["matplotlib", "numpy"]);
+
+      statusEl.textContent = "Fetching app source...";
+      for (const name of SOURCE_FILES) {
+        const resp = await fetch(RAW_BASE + name);
+        if (!resp.ok) {
+          throw new Error(`Failed to fetch ${name}: ${resp.status}`);
+        }
+        const text = await resp.text();
+        pyodide.FS.writeFile("/home/pyodide/" + name, text);
+      }
+
+      statusEl.textContent = "Starting...";
+      await pyodide.runPythonAsync(`
+import sys
+sys.path.insert(0, "/home/pyodide")
+
+import arcs
+arcs.main([])
+`);
+      statusEl.textContent = "";
+    }
+
+    main().catch((err) => {
+      statusEl.textContent = "Failed to start: " + err;
+      console.error(err);
+    });
+  </script>
+</body>
+</html>
