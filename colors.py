@@ -149,6 +149,12 @@ def _ask_swatches(title: str, initial: str) -> str | None:
 
 def ask_color(title: str, initial: str = "black") -> str | None:
     """Ask the user for a color. Returns a matplotlib-friendly color string, or None."""
+    if sys.platform == "emscripten":
+        # Running under Pyodide (e.g. the GitHub Pages demo): no Tk/OS pickers,
+        # and a second blocking matplotlib window isn't supported there either.
+        # Keep the current color instead of risking a hang.
+        return None
+
     initial = _normalize_hex(initial) if initial.startswith("#") or len(initial) == 6 else initial
 
     for attempt in (_ask_tkinter, _ask_osascript, _ask_swatches):
