@@ -1,8 +1,12 @@
 # arcs
 
 Try it in the browser: [spiral](https://boazmichaely.github.io/arcs/) /
-[recaman](https://boazmichaely.github.io/arcs/recaman.html) (runs entirely
-client-side via [Pyodide](https://pyodide.org); first load takes ~10-20s).
+[recaman](https://boazmichaely.github.io/arcs/recaman.html). Runs entirely
+client-side via [Pyodide](https://pyodide.org) (no server) - first load
+takes ~10-20s to fetch matplotlib/numpy. Differences from the desktop app
+below: no CLI flags, so each page is fixed at that variant's defaults; and
+`C` (color picker) is a no-op, since there's no Tk/OS picker available in
+a browser.
 
 Renders perfect half-circle arcs above and below a number line, tracing a
 step sequence one step at a time. Steps alternate above/below by parity
