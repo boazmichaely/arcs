@@ -1,12 +1,19 @@
 # arcs
 
 Renders perfect half-circle arcs above and below a number line, tracing a
-step sequence one step at a time. Two variants, picked with `--variant`:
+step sequence one step at a time. Steps alternate above/below by parity
+(odd above, even below) in both variants, picked with `--variant`:
 
-| `--variant` | Movement | Arc side (above/below) | Color |
-| --- | --- | --- | --- |
-| `spiral` (used if `--variant` is omitted) | Odd `n` right, even `n` left | Follows movement direction | Follows arc side |
-| `recaman` | Recamán's sequence: try `pos - n` (if non-negative and unvisited), else `pos + n` | Alternates by step parity (odd above, even below), independent of movement | Follows rotational direction: **clockwise** if arc side agrees with movement direction (above-and-right, or below-and-left), **counter-clockwise** otherwise |
+| `--variant` | Movement | Color |
+| --- | --- | --- |
+| `spiral` (default) | Odd `n` right, even `n` left | Follows arc side (above/below) |
+| `recaman` | Recamán's sequence: try `pos - n` (if non-negative and unvisited), else `pos + n` | Follows rotational direction: **clockwise** if arc side agrees with movement direction (above-and-right, or below-and-left), **counter-clockwise** otherwise |
+
+For `spiral`, side and movement direction always agree (odd `n` always
+moves right), so side-based and rotation-based coloring would look
+identical - that's why it uses the simpler one. `recaman`'s movement
+doesn't follow parity, so rotational coloring is the more interesting
+choice there.
 
 `spiral` at step 50:
 ![spiral variant at step 50](assets/spiral-step50.png)
@@ -15,10 +22,8 @@ step sequence one step at a time. Two variants, picked with `--variant`:
 ![recaman variant at step 50](assets/recaman-step50.png)
 
 `spiral` starts at `[-5, 5]` and grows/zooms out by 5 on each side whenever
-a step lands outside the current view. `recaman` instead uses a fixed-width,
-full-figure-width viewport that auto-zooms out to keep every arc visible and
-auto-pans to stay left-aligned at 0 (it never goes negative) until you pan
-manually - see [Variants](#variants) below for the rest of its behavior.
+a step lands outside the current view. `recaman` uses a fixed-width,
+pannable viewport instead - see [Variants](#variants) for details.
 
 Arcs are true circles (1:1 aspect ratio), and the window is freely resizable.
 Arc-size labels show the signed step (`n` above, `-n` below) and are hidden
@@ -88,7 +93,7 @@ Click the plot window to give it focus, then:
 | `Enter` (with digits typed) | Advance that many steps, and remember that count as the increment |
 | `Backspace` | Remove the last typed digit |
 | `Left` | Undo by the remembered increment |
-| `Up` / `Down` | Zoom in / out (pivot: origin by default; change `StyleConfig.zoom_pivot` in code) |
+| `Up` / `Down` | Zoom in / out (pivot: origin for `spiral`; current view center for `recaman`, since its viewport pans) |
 | Mouse wheel | Same zoom as `Up` / `Down` |
 | `Shift+Down` / `Shift+Up` | Decrease / increase zoom speed, live |
 | `Shift+Left` / `Shift+Right` | Pan the viewport left / right (only variants with a fixed-width viewport, e.g. `recaman`) |
